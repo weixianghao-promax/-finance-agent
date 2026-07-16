@@ -1,0 +1,715 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>码头港口财务管理智能助手</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
+            background: linear-gradient(135deg, #0c1445 0%, #1a237e 50%, #283593 100%);
+            min-height: 100vh;
+            display: flex;
+        }
+
+        .sidebar {
+            width: 280px;
+            background: rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(10px);
+            padding: 20px;
+            color: white;
+            border-right: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .sidebar h2 {
+            font-size: 18px;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .sidebar .nav-item {
+            padding: 12px 15px;
+            margin-bottom: 8px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .sidebar .nav-item:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .sidebar .nav-item.active {
+            background: #42a5f5;
+        }
+
+        .sidebar .quick-actions {
+            margin-top: 30px;
+        }
+
+        .sidebar .quick-action-item {
+            padding: 10px 15px;
+            margin-bottom: 6px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 14px;
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .sidebar .quick-action-item:hover {
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            padding: 20px 30px;
+            background: rgba(0, 0, 0, 0.2);
+            backdrop-filter: blur(10px);
+            color: white;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .header h1 {
+            font-size: 22px;
+            font-weight: 600;
+        }
+
+        .header .model-info {
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        .chat-container {
+            flex: 1;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 30px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .chat-messages::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .chat-messages::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .chat-messages::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 3px;
+        }
+
+        .message {
+            display: flex;
+            gap: 12px;
+            max-width: 80%;
+        }
+
+        .message.user {
+            margin-left: auto;
+            flex-direction: row-reverse;
+        }
+
+        .message.assistant {
+            margin-right: auto;
+        }
+
+        .message .avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            flex-shrink: 0;
+        }
+
+        .message.user .avatar {
+            background: linear-gradient(135deg, #42a5f5, #1e88e5);
+        }
+
+        .message.assistant .avatar {
+            background: linear-gradient(135deg, #66bb6a, #43a047);
+        }
+
+        .message .message-content {
+            padding: 15px 20px;
+            border-radius: 18px;
+            line-height: 1.6;
+            font-size: 15px;
+            word-break: break-all;
+        }
+
+        .message.user .message-content {
+            background: linear-gradient(135deg, #42a5f5, #1e88e5);
+            color: white;
+            border-bottom-right-radius: 4px;
+        }
+
+        .message.assistant .message-content {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            border-bottom-left-radius: 4px;
+        }
+
+        .typing-indicator {
+            display: flex;
+            gap: 4px;
+            padding: 10px;
+        }
+
+        .typing-indicator span {
+            width: 8px;
+            height: 8px;
+            background: #42a5f5;
+            border-radius: 50%;
+            animation: typing 1.4s infinite ease-in-out both;
+        }
+
+        .typing-indicator span:nth-child(1) { animation-delay: -0.32s; }
+        .typing-indicator span:nth-child(2) { animation-delay: -0.16s; }
+
+        @keyframes typing {
+            0%, 80%, 100% { transform: scale(0); }
+            40% { transform: scale(1); }
+        }
+
+        .chat-input-area {
+            padding: 20px 30px;
+            background: rgba(0, 0, 0, 0.2);
+            backdrop-filter: blur(10px);
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .input-container {
+            display: flex;
+            gap: 12px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 25px;
+            padding: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .input-container input {
+            flex: 1;
+            background: transparent;
+            border: none;
+            outline: none;
+            padding: 12px 20px;
+            color: white;
+            font-size: 15px;
+        }
+
+        .input-container input::placeholder {
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        .input-container button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 15px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .input-container .upload-btn {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            padding: 12px 16px;
+        }
+
+        .input-container .upload-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .input-container .send-btn {
+            background: linear-gradient(135deg, #42a5f5, #1e88e5);
+            color: white;
+        }
+
+        .input-container .send-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(66, 165, 245, 0.4);
+        }
+
+        .input-container .send-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        #file-input {
+            display: none;
+        }
+
+        .download-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 16px;
+            background: rgba(66, 165, 245, 0.3);
+            color: #42a5f5;
+            text-decoration: none;
+            border-radius: 8px;
+            font-size: 14px;
+            margin-top: 10px;
+            transition: all 0.3s ease;
+        }
+
+        .download-link:hover {
+            background: rgba(66, 165, 245, 0.5);
+        }
+
+        .file-info {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            background: rgba(66, 165, 245, 0.2);
+            border-radius: 12px;
+            font-size: 13px;
+            margin-bottom: 10px;
+            color: #90caf9;
+        }
+
+        .system-message {
+            text-align: center;
+            padding: 10px 20px;
+            background: rgba(76, 175, 80, 0.2);
+            border-radius: 8px;
+            color: #a5d6a7;
+            font-size: 14px;
+        }
+
+        .welcome-message {
+            background: rgba(255, 255, 255, 0.08);
+            padding: 25px;
+            border-radius: 16px;
+            margin-bottom: 20px;
+        }
+
+        .welcome-message h3 {
+            margin-bottom: 15px;
+            color: #42a5f5;
+        }
+
+        .welcome-message ul {
+            list-style: none;
+            padding-left: 0;
+        }
+
+        .welcome-message li {
+            padding: 8px 0;
+            padding-left: 20px;
+            position: relative;
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        .welcome-message li::before {
+            content: '✓';
+            position: absolute;
+            left: 0;
+            color: #66bb6a;
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                display: none;
+            }
+
+            .message {
+                max-width: 95%;
+            }
+
+            .chat-input-area {
+                padding: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <h2>📊 功能菜单</h2>
+        <div class="nav-item active">📄 报表生成</div>
+        <div class="nav-item">📈 数据分析</div>
+        <div class="nav-item">💰 预算管理</div>
+        <div class="nav-item">🛡️ 安全培训</div>
+
+        <div class="quick-actions">
+            <h2>⚡ 快速操作</h2>
+            <div class="quick-action-item" onclick="sendQuickAction('生成日报')">📅 生成日报</div>
+            <div class="quick-action-item" onclick="sendQuickAction('生成周报')">📆 生成周报</div>
+            <div class="quick-action-item" onclick="sendQuickAction('生成月报')">📋 生成月报</div>
+            <div class="quick-action-item" onclick="sendQuickAction('成本分析')">📊 成本分析</div>
+        </div>
+    </div>
+
+    <div class="main-content">
+        <div class="header">
+            <h1>🚢 码头港口财务管理智能助手</h1>
+            <div class="model-info">🤖 DeepSeek 大模型</div>
+        </div>
+
+        <div class="chat-container">
+            <div class="chat-messages" id="chat-messages">
+                <div class="welcome-message">
+                    <h3>您好！我是您的码头港口财务管理智能助手。</h3>
+                    <ul>
+                        <li>📊 帮您生成财务报表</li>
+                        <li>📈 分析财务数据和指标</li>
+                        <li>💰 进行预算编制和成本控制</li>
+                        <li>📝 整理会议记录</li>
+                        <li>📋 制定安全培训方案</li>
+                    </ul>
+                    <p style="margin-top: 15px; color: rgba(255, 255, 255, 0.6);">请输入您的问题，我将为您提供专业的服务！</p>
+                </div>
+            </div>
+
+            <div class="chat-input-area">
+                <div class="input-container">
+                    <button class="upload-btn" id="upload-btn">📁 上传文件</button>
+                    <input type="file" id="file-input" accept=".xlsx,.xls,.docx,.doc,.pptx,.ppt,.pdf,.txt">
+                    <input type="text" id="user-input" placeholder="请输入您的问题..." autocomplete="off">
+                    <button class="send-btn" id="send-btn">发送</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_KEY = 'sk-2f585db300124e90ada1f8f5980df367';
+        const BASE_URL = 'https://api.deepseek.com';
+        const MODEL = 'deepseek-v4-pro';
+
+        let chatHistory = [];
+        let uploadedFileContent = null;
+        let uploadedFileName = null;
+
+        const messagesContainer = document.getElementById('chat-messages');
+        const userInput = document.getElementById('user-input');
+        const sendBtn = document.getElementById('send-btn');
+        const uploadBtn = document.getElementById('upload-btn');
+        const fileInput = document.getElementById('file-input');
+
+        sendBtn.addEventListener('click', sendMessage);
+        userInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') sendMessage();
+        });
+
+        uploadBtn.addEventListener('click', () => fileInput.click());
+
+        fileInput.addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            addMessage(`📁 正在上传文件: ${file.name}`, 'user');
+            sendBtn.disabled = true;
+
+            try {
+                const content = await readFileContent(file);
+                uploadedFileContent = content;
+                uploadedFileName = file.name;
+                
+                addMessage(`✅ 文件上传成功：${file.name}（${file.size}字节）\n文件内容已解析，您可以提问了。`, 'assistant');
+            } catch (error) {
+                addMessage(`❌ 文件上传失败：${error.message}`, 'assistant');
+            } finally {
+                sendBtn.disabled = false;
+                fileInput.value = '';
+            }
+        });
+
+        async function readFileContent(file) {
+            const ext = file.name.split('.').pop().toLowerCase();
+            
+            if (ext === 'txt') {
+                return await readAsText(file);
+            } else if (ext === 'pdf') {
+                return await readPDF(file);
+            } else if (['docx', 'doc'].includes(ext)) {
+                return await readWord(file);
+            } else if (['xlsx', 'xls'].includes(ext)) {
+                return await readExcel(file);
+            } else if (['pptx', 'ppt'].includes(ext)) {
+                return await readPPT(file);
+            } else {
+                return await readAsText(file);
+            }
+        }
+
+        function readAsText(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = (e) => resolve(e.target.result);
+                reader.onerror = reject;
+                reader.readAsText(file, 'utf-8');
+            });
+        }
+
+        async function readPDF(file) {
+            try {
+                const arrayBuffer = await new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = (e) => resolve(e.target.result);
+                    reader.onerror = reject;
+                    reader.readAsArrayBuffer(file);
+                });
+                
+                const pdf = await import('https://cdn.jsdelivr.net/npm/pdfjs-dist@4.0.379/build/pdf.min.mjs');
+                const data = new Uint8Array(arrayBuffer);
+                const doc = await pdf.getDocument(data).promise;
+                
+                let text = '';
+                for (let i = 1; i <= doc.numPages; i++) {
+                    const page = await doc.getPage(i);
+                    const content = await page.getTextContent();
+                    text += content.items.map(item => item.str).join(' ') + '\n';
+                }
+                return text;
+            } catch (e) {
+                console.error('PDF parsing failed:', e);
+                return await readAsText(file);
+            }
+        }
+
+        async function readWord(file) {
+            try {
+                const arrayBuffer = await new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = (e) => resolve(e.target.result);
+                    reader.onerror = reject;
+                    reader.readAsArrayBuffer(file);
+                });
+                
+                const { Document, Packer } = await import('https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.min.js');
+                
+                const buffer = Buffer.from(arrayBuffer);
+                const doc = await Document.load(buffer);
+                const text = doc.getText();
+                return text;
+            } catch (e) {
+                console.error('Word parsing failed:', e);
+                return await readAsText(file);
+            }
+        }
+
+        async function readExcel(file) {
+            try {
+                const arrayBuffer = await new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = (e) => resolve(e.target.result);
+                    reader.onerror = reject;
+                    reader.readAsArrayBuffer(file);
+                });
+                
+                const XLSX = await import('https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js');
+                
+                const data = new Uint8Array(arrayBuffer);
+                const workbook = XLSX.read(data, { type: 'array' });
+                
+                let text = '';
+                workbook.SheetNames.forEach(sheetName => {
+                    text += `--- Sheet: ${sheetName} ---\n`;
+                    const sheet = workbook.Sheets[sheetName];
+                    const json = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+                    json.forEach(row => {
+                        text += row.join('\t') + '\n';
+                    });
+                    text += '\n';
+                });
+                return text;
+            } catch (e) {
+                console.error('Excel parsing failed:', e);
+                return await readAsText(file);
+            }
+        }
+
+        async function readPPT(file) {
+            try {
+                const arrayBuffer = await new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = (e) => resolve(e.target.result);
+                    reader.onerror = reject;
+                    reader.readAsArrayBuffer(file);
+                });
+                
+                return `PPT文件内容（解析中）\n文件名: ${file.name}\n大小: ${file.size}字节\n提示：PPT文件解析较复杂，建议上传PDF版本`;
+            } catch (e) {
+                return await readAsText(file);
+            }
+        }
+
+        async function sendMessage() {
+            const text = userInput.value.trim();
+            if (!text && !uploadedFileContent) return;
+
+            addMessage(text, 'user');
+            userInput.value = '';
+            sendBtn.disabled = true;
+
+            const typingIndicator = addTypingIndicator();
+
+            try {
+                const response = await callDeepSeekAPI(text);
+                removeTypingIndicator(typingIndicator);
+                addMessage(response, 'assistant');
+            } catch (error) {
+                removeTypingIndicator(typingIndicator);
+                addMessage(`❌ 发生错误：${error.message}`, 'assistant');
+            } finally {
+                sendBtn.disabled = false;
+            }
+        }
+
+        async function callDeepSeekAPI(text) {
+            let systemPrompt = `你是一位专业的码头港口财务管理人员，精通财务数据分析、报表生成、预算管理等领域。
+你的任务是：
+1. 分析用户上传的财务文件内容
+2. 根据用户需求提供专业的财务分析和建议
+3. 生成清晰、准确的财务报表和数据摘要
+4. 回答用户的财务咨询问题
+
+请言简意赅地整理核心内容，直接给出结论和关键要点，无需思考过程。`;
+
+            if (uploadedFileContent) {
+                systemPrompt += `\n\n用户上传的文件内容如下（文件名：${uploadedFileName}）：\n${uploadedFileContent}`;
+            }
+
+            const messages = [
+                { role: 'system', content: systemPrompt },
+                ...chatHistory.map(h => ({
+                    role: h.user ? 'user' : 'assistant',
+                    content: h.user || h.assistant
+                })),
+                { role: 'user', content: text }
+            ];
+
+            const response = await fetch(`${BASE_URL}/v1/chat/completions`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${API_KEY}`
+                },
+                body: JSON.stringify({
+                    model: MODEL,
+                    messages: messages,
+                    temperature: 0.7,
+                    max_tokens: 4096
+                })
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error?.message || 'API调用失败');
+            }
+
+            const data = await response.json();
+            const answer = data.choices[0].message.content;
+            
+            chatHistory.push({ user: text, assistant: answer });
+            
+            return answer;
+        }
+
+        function addMessage(text, role, downloadUrl = null, fileType = null) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${role}`;
+            
+            const avatar = role === 'user' ? '👤' : '🤖';
+            
+            let downloadButton = '';
+            if (downloadUrl) {
+                const typeLabels = {
+                    '.xlsx': 'Excel表格',
+                    '.docx': 'Word文档',
+                    '.pptx': 'PPT演示',
+                    '.txt': '文本文件'
+                };
+                const label = typeLabels[fileType] || '整理报告';
+                downloadButton = `
+                    <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.2);">
+                        <a href="${downloadUrl}" class="download-link" download>
+                            📥 下载${label}
+                        </a>
+                    </div>
+                `;
+            }
+            
+            const formattedText = formatText(text);
+            
+            messageDiv.innerHTML = `
+                <div class="avatar">${avatar}</div>
+                <div class="message-content">${formattedText}${downloadButton}</div>
+            `;
+            
+            messagesContainer.appendChild(messageDiv);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        function formatText(text) {
+            return text
+                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                .replace(/\n/g, '<br>')
+                .replace(/\[(\d+)\]/g, '<sup>$1</sup>');
+        }
+
+        function addTypingIndicator() {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message assistant';
+            messageDiv.innerHTML = `
+                <div class="avatar">🤖</div>
+                <div class="message-content">
+                    <div class="typing-indicator">
+                        <span></span><span></span><span></span>
+                    </div>
+                </div>
+            `;
+            messagesContainer.appendChild(messageDiv);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            return messageDiv;
+        }
+
+        function removeTypingIndicator(element) {
+            if (element && element.parentNode) {
+                element.parentNode.removeChild(element);
+            }
+        }
+
+        function sendQuickAction(action) {
+            userInput.value = action;
+            sendMessage();
+        }
+    </script>
+</body>
+</html>
