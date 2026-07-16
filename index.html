@@ -9,7 +9,7 @@
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif; background: linear-gradient(135deg, #0c1445 0%, #1a237e 50%, #283593 100%); min-height: 100vh; display: flex; }
-        .sidebar { width: 280px; background: rgba(0, 0, 0, 0.3); backdrop-filter: blur(10px); padding: 20px; color: white; border-right: 1px solid rgba(255,255,255,0.1); }
+        .sidebar { width: 280px; background: rgba(0,0,0,0.3); backdrop-filter: blur(10px); padding: 20px; color: white; border-right: 1px solid rgba(255,255,255,0.1); }
         .sidebar h2 { font-size: 18px; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 1px solid rgba(255,255,255,0.2); }
         .sidebar .nav-item { padding: 12px 15px; margin-bottom: 8px; border-radius: 8px; cursor: pointer; transition: all 0.3s ease; display: flex; align-items: center; gap: 10px; }
         .sidebar .nav-item:hover { background: rgba(255,255,255,0.1); }
@@ -51,8 +51,10 @@
         .input-container .send-btn:hover { transform: translateY(-2px); box-shadow: 0 4px 15px rgba(66,165,245,0.4); }
         .input-container .send-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
         #file-input { display: none; }
-        .download-link { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; background: rgba(66,165,245,0.3); color: #42a5f5; text-decoration: none; border-radius: 8px; font-size: 14px; margin-top: 10px; transition: all 0.3s ease; }
-        .download-link:hover { background: rgba(66,165,245,0.5); }
+        .download-section { margin-top: 15px; padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.2); }
+        .download-btn { display: inline-flex; align-items: center; gap: 8px; padding: 10px 24px; background: linear-gradient(135deg, #42a5f5, #1e88e5); color: white; text-decoration: none; border-radius: 12px; font-size: 14px; font-weight: 600; transition: all 0.3s ease; }
+        .download-btn:hover { transform: translateY(-2px); box-shadow: 0 4px 15px rgba(66,165,245,0.4); }
+        .download-btn i { font-size: 16px; }
         .welcome-message { background: rgba(255,255,255,0.08); padding: 25px; border-radius: 16px; margin-bottom: 20px; }
         .welcome-message h3 { margin-bottom: 15px; color: #42a5f5; }
         .welcome-message ul { list-style: none; padding-left: 0; }
@@ -252,7 +254,8 @@
             try {
                 const response = await callDeepSeekAPI(text);
                 removeTypingIndicator(typingIndicator);
-                addMessage(response, 'assistant');
+                const downloadUrl = generateExcelFile(response);
+                addMessage(response, 'assistant', downloadUrl);
             } catch (error) {
                 removeTypingIndicator(typingIndicator);
                 addMessage(`❌ 发生错误：${error.message}`, 'assistant');
@@ -286,14 +289,93 @@
             return answer;
         }
         
-        function addMessage(text, role) {
+        function generateExcelFile(content) {
+            try {
+                const lines = content.split('\n');
+                const tables = [];
+                let currentTable = [];
+                let inTable = false;
+                
+                lines.forEach(line => {
+                    const trimmed = line.trim();
+                    if (trimmed.startsWith('|') && trimmed.endsWith('|')) {
+                        inTable = true;
+                        const cells = trimmed.split('|').map(c => c.trim()).filter(c => c && c !== '---');
+                        if (cells.length > 0) {
+                            currentTable.push(cells);
+                        }
+                    } else if (inTable && currentTable.length > 0) {
+                        tables.push(currentTable);
+                        currentTable = [];
+                        inTable = false;
+                    }
+                });
+                
+                if (currentTable.length > 0) {
+                    tables.push(currentTable);
+                }
+                
+                if (tables.length === 0) {
+                    const rows = content.split('\n').map(line => line.split('\t'));
+                    if (rows.length > 1) {
+                        tables.push(rows);
+                    } else {
+                        return null;
+                    }
+                }
+                
+                const wb = XLSX.utils.book_new();
+                
+                tables.forEach((table, index) => {
+                    const ws = XLSX.utils.aoa_to_sheet(table);
+                    const sheetName = `整理表格${index + 1}`;
+                    XLSX.utils.book_append_sheet(wb, ws, sheetName);
+                });
+                
+                const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+                const fileName = `整理报告_${dateStr}.xlsx`;
+                
+                XLSX.writeFile(wb, fileName);
+                
+                return fileName;
+            } catch (e) {
+                console.error('Excel generation failed:', e);
+                return null;
+            }
+        }
+        
+        function addMessage(text, role, downloadFileName = null) {
             const messageDiv = document.createElement('div');
             messageDiv.className = `message ${role}`;
             const avatar = role === 'user' ? '👤' : '🤖';
+            
+            let downloadSection = '';
+            if (downloadFileName) {
+                downloadSection = `
+                    <div class="download-section">
+                        <a href="#" onclick="downloadExcel('${downloadFileName}')" class="download-btn">
+                            📥 下载Excel表格
+                        </a>
+                    </div>
+                `;
+            }
+            
             const formattedText = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br>');
-            messageDiv.innerHTML = `<div class="avatar">${avatar}</div><div class="message-content">${formattedText}</div>`;
+            messageDiv.innerHTML = `<div class="avatar">${avatar}</div><div class="message-content">${formattedText}${downloadSection}</div>`;
             messagesContainer.appendChild(messageDiv);
             messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+        
+        function downloadExcel(fileName) {
+            const msg = messagesContainer.lastElementChild;
+            if (msg && msg.querySelector('.download-btn')) {
+                msg.querySelector('.download-btn').innerHTML = '📥 下载中...';
+            }
+            setTimeout(() => {
+                if (msg && msg.querySelector('.download-btn')) {
+                    msg.querySelector('.download-btn').innerHTML = '📥 下载Excel表格';
+                }
+            }, 1000);
         }
         
         function addTypingIndicator() {
