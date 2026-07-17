@@ -247,7 +247,52 @@
         }
         
         async function readPPT(file) {
-            return `PPT文件内容\n文件名: ${file.name}\n大小: ${file.size}字节\n提示：PPT文件解析较复杂，建议转为PDF或复制文本内容重新上传。`;
+            try {
+                const arrayBuffer = await new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = (e) => resolve(e.target.result);
+                    reader.onerror = reject;
+                    reader.readAsArrayBuffer(file);
+                });
+                const zip = new JSZip();
+                await zip.loadAsync(arrayBuffer);
+                let text = `=== PPT文件: ${file.name} ===\n`;
+                const slideRegex = /^ppt\/slides\/slide\d+\.xml$/;
+                const slideFiles = Object.keys(zip.files).filter(name => slideRegex.test(name));
+                slideFiles.sort((a, b) => {
+                    const numA = parseInt(a.match(/slide(\d+)/)[1]);
+                    const numB = parseInt(b.match(/slide(\d+)/)[1]);
+                    return numA - numB;
+                });
+                for (const slideFile of slideFiles) {
+                    const xmlContent = await zip.file(slideFile).async('string');
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(xmlContent, 'application/xml');
+                    const textNodes = doc.evaluate('//text()', doc, null, XPathResult.ORDERED_NODE_ITERATOR_TYPE, null);
+                    let slideText = '';
+                    let node;
+                    while ((node = textNodes.iterateNext())) {
+                        slideText += node.textContent + '\n';
+                    }
+                    const slideNum = slideFile.match(/slide(\d+)/)[1];
+                    text += `\n--- 幻灯片 ${slideNum} ---\n`;
+                    text += slideText.replace(/\n+/g, '\n').trim() || '(空白幻灯片)';
+                    text += '\n';
+                }
+                if (zip.files['docProps/core.xml']) {
+                    const coreXml = await zip.file('docProps/core.xml').async('string');
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(coreXml, 'application/xml');
+                    const title = doc.querySelector('dc\\:title, title');
+                    const creator = doc.querySelector('dc\\:creator, creator');
+                    if (title) text = `标题: ${title.textContent}\n\n${text}`;
+                    if (creator) text = `作者: ${creator.textContent}\n${text}`;
+                }
+                return text.trim();
+            } catch (e) {
+                console.error('PPT parsing failed:', e);
+                return `PPT文件内容（解析失败）\n文件名: ${file.name}\n大小: ${file.size}字节\n提示：请将PPT转为PDF后重新上传，或复制文本内容重新上传。`;
+            }
         }
         
         async function sendMessage() {
