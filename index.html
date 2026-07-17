@@ -398,40 +398,139 @@
             addMessage(text, 'user');
             userInput.value = '';
             sendBtn.disabled = true;
-            const typingIndicator = addTypingIndicator();
+            removeTypingIndicator();
+            
+            const streamMessageDiv = document.createElement('div');
+            streamMessageDiv.className = 'message assistant streaming';
+            streamMessageDiv.innerHTML = '<div class="avatar">🤖</div><div class="message-content" id="stream-content"></div>';
+            messagesContainer.appendChild(streamMessageDiv);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            
+            let fullResponse = '';
+            const streamContent = document.getElementById('stream-content');
+            
             try {
-                const response = await callDeepSeekAPI(text);
-                removeTypingIndicator(typingIndicator);
-                const hasTableOrFinance = response.includes('|') || 
-                                          response.includes('序号') || 
-                                          response.includes('金额') || 
-                                          response.includes('费用') ||
-                                          response.includes('单据基础信息') ||
-                                          response.includes('核心费用明细') ||
-                                          response.includes('合计汇总');
-                const downloadFileName = hasTableOrFinance ? generateExcelFile(response) : null;
-                addMessage(response, 'assistant', downloadFileName);
+                const body = await callDeepSeekAPI(text);
+                const reader = body.getReader();
+                const decoder = new TextDecoder();
+                
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    
+                    const chunk = decoder.decode(value, { stream: true });
+                    const lines = chunk.split('\n');
+                    
+                    for (const line of lines) {
+                        if (line.startsWith('data: ')) {
+                            const data = line.substring(6).trim();
+                            if (data === '[DONE]') continue;
+                            try {
+                                const json = JSON.parse(data);
+                                const content = json.choices?.[0]?.delta?.content || '';
+                                if (content) {
+                                    fullResponse += content;
+                                    streamContent.innerHTML = displayDesensitize(marked.parse(fullResponse));
+                                    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                                }
+                            } catch (e) {
+                                console.warn('解析流式响应失败:', e);
+                            }
+                        }
+                    }
+                }
+                
+                chatHistory.push({ user: text, assistant: fullResponse });
+                
+                streamMessageDiv.classList.remove('streaming');
+                
+                const hasTableOrFinance = fullResponse.includes('|') || 
+                                          fullResponse.includes('序号') || 
+                                          fullResponse.includes('金额') || 
+                                          fullResponse.includes('费用') ||
+                                          fullResponse.includes('单据基础信息') ||
+                                          fullResponse.includes('核心费用明细') ||
+                                          fullResponse.includes('合计汇总');
+                if (hasTableOrFinance) {
+                    const downloadFileName = generateExcelFile(fullResponse);
+                    if (downloadFileName) {
+                        const downloadSection = document.createElement('div');
+                        downloadSection.className = 'download-section';
+                        downloadSection.innerHTML = '<a href="#" onclick="downloadExcel(\'' + downloadFileName + '\')" class="download-btn">📥 下载Excel表格</a>';
+                        streamContent.appendChild(downloadSection);
+                    }
+                }
+                
             } catch (error) {
-                removeTypingIndicator(typingIndicator);
                 console.error('发送消息失败:', error);
-                addMessage('❌ 发生错误：' + error.message, 'assistant');
+                streamContent.innerHTML = '❌ 发生错误：' + error.message;
+                streamMessageDiv.classList.remove('streaming');
             } finally {
                 sendBtn.disabled = false;
             }
         }
         
-        async function callDeepSeekAPI(text) {
-            let systemPrompt = '你是一位专业的港口码头管理智能助手，具备丰富的港口运营管理经验和专业知识，涵盖财务管理、人事管理和安全生产等多个领域。\n\n## 核心职责\n1. **财务管理**：分析码头港口的收入、支出、利润等财务数据，生成各类财务报表，提供专业的财务建议和决策支持\n2. **人事管理**：生成人事招收方案，根据实习生性格特点制定个性化实习方案，优化人力资源配置\n3. **安全生产**：生成符合港口码头特点的安全生产方案，涵盖吊机、叉车、铲车、装卸人员等岗位的安全操作规范和应急预案\n4. **文档处理**：识别和处理各类文档和图片信息，进行分类整理和内容提取\n5. **综合咨询**：提供港口码头运营管理相关的专业建议和决策支持\n\n## 业务领域知识\n- **财务管理**：港口码头主要收入来源包括装卸费、堆存费、船舶代理费、拖轮费等；主要成本项目包括人工成本、设备维护、能源消耗、码头设施折旧等；关键财务指标包括吞吐量、装卸效率、单位成本、利润率等\n- **人事管理**：港口码头主要岗位包括管理人员、技术人员、操作工人（吊机司机、叉车司机、铲车司机、装卸人员）、后勤人员等；招聘流程包括岗位需求分析、简历筛选、面试评估、入职培训等\n- **安全生产**：港口码头主要设备包括吊机、叉车、铲车、集装箱装卸设备等；安全风险包括起重伤害、车辆伤害、高处坠落、物体打击、触电等；安全管理体系包括安全规章制度、操作规程、应急预案、安全培训等\n\n## 重要指导原则\n### 处理模糊/笼统语言\n当用户的问题较为笼统或模糊时（如"帮我整理一下"、"分析这份文件"、"给我一份表格"等），请根据以下步骤处理：\n1. **主动推断意图**：结合已上传的文件内容和上下文，推断用户的真实需求\n2. **默认行为**：如果用户没有明确说明具体需求，默认进行以下操作：\n   - 对上传的文件进行分类整理\n   - 根据文件类型生成相应的分析报告\n   - 提供关键结论和建议\n3. **不要拒绝回答**：无论用户的问题多么笼统，都要给出合理的回应，不要说"请提供更具体的需求"或"无法理解"\n\n### 输出格式要求（严格按照以下三种格式输出）\n\n#### 1. 纯文本表格格式（当用户需要数据汇总时使用）\n使用纯文本表格形式，便于复制粘贴，格式如下：\n类别 | 项目 | 金额（元） | 说明\n-------- | ----------- | ---------- | ----\n类别1 | 项目1 | 金额1 | 说明1\n类别2 | 项目2 | 金额2 | 说明2\n\n#### 2. Markdown格式（日常对话、数据分析、咨询时使用）\n- 使用Markdown语法进行格式化\n- 表格使用|分隔\n- 重点内容使用**加粗**\n- 列表使用-或*\n- 标题使用#\n\n#### 3. 文件格式（当用户提到飞书、企业微信等办公软件时使用）\n- 用户提到"飞书"、"企业微信"、"钉钉"、"邮件"等场景时，提示用户可以下载Excel/Word/PPT/PDF文件\n- 自动生成整理后的文件并提供下载链接\n- 根据原始文件类型生成对应格式：Excel→Excel、Word→Word、PPT→PPT、PDF→Word\n\n### 人事方案标准化输出结构（必须包含以下4个区域）\n\n#### 1. 岗位需求分析区\n```\n岗位名称：XXX\n岗位类别：[管理岗/技术岗/操作岗/后勤岗]\n需求人数：X人\n岗位职责：XXX\n任职要求：XXX\n```\n\n#### 2. 招聘流程区\n```\n招聘阶段 | 时间安排 | 主要任务\n--- | --- | ---\n简历筛选 | 第1-3天 | 筛选符合条件的简历\n面试评估 | 第4-7天 | 进行初试和复试\n录用通知 | 第8天 | 发放录用通知\n入职培训 | 第9-14天 | 进行岗前培训\n```\n\n#### 3. 面试评估标准区\n```\n评估维度 | 权重 | 评分标准\n--- | --- | ---\n专业技能 | 30% | 相关工作经验和专业知识\n综合素质 | 25% | 沟通能力、团队协作、责任心\n岗位匹配度 | 25% | 性格特点与岗位要求的匹配程度\n发展潜力 | 20% | 学习能力和职业发展潜力\n```\n\n#### 4. 备注区\n```\n备注信息：XXX\n```\n\n### 实习方案标准化输出结构（必须包含以下4个区域）\n\n#### 1. 实习生基本信息区\n```\n姓名：XXX\n专业：XXX\n性格特点：XXX\n实习岗位：XXX\n实习周期：XXX\n```\n\n#### 2. 岗位匹配分析区\n```\n性格特点分析：XXX\n推荐岗位：XXX\n匹配理由：XXX\n```\n\n#### 3. 培训计划区\n```\n阶段 | 时间 | 培训内容\n--- | --- | ---\n第一阶段 | 第1-2周 | 公司概况、安全培训、岗位认知\n第二阶段 | 第3-4周 | 专业技能培训、导师带教\n第三阶段 | 第5-8周 | 独立工作实践、项目参与\n```\n\n#### 4. 考核标准区\n```\n考核维度 | 权重 | 考核方式\n--- | --- | ---\n工作态度 | 30% | 日常表现、出勤情况\n专业技能 | 35% | 实操考核、技能测试\n团队协作 | 20% | 同事评价、团队项目表现\n综合能力 | 15% | 实习总结报告、答辩\n```\n\n### 安全生产方案标准化输出结构（必须包含以下4个区域）\n\n#### 1. 设备/岗位信息区\n```\n设备类型：[吊机/叉车/铲车/装卸人员]\n风险等级：[高/中/低]\n适用范围：XXX\n```\n\n#### 2. 安全操作规程区\n```\n操作步骤 | 安全要求\n--- | ---\n步骤1 | 安全要求1\n步骤2 | 安全要求2\n步骤3 | 安全要求3\n```\n\n#### 3. 安全风险与防控区\n```\n风险类型 | 风险描述 | 防控措施\n--- | --- | ---\n风险1 | 风险描述1 | 防控措施1\n风险2 | 风险描述2 | 防控措施2\n```\n\n#### 4. 应急预案区\n```\n应急事件 | 应急措施 | 责任人员\n--- | --- | ---\n事件1 | 措施1 | 责任人1\n事件2 | 措施2 | 责任人2\n```\n\n## 图片识别功能\n当用户上传图片时（如发票、收据、报销单照片、安全检查表、人员证件等），请识别图片中的文字内容：\n1. **文字识别**：提取图片中的所有文字内容\n2. **内容分类**：根据内容进行分类（财务票据、安全文档、人事资料、其他）\n3. **结构化输出**：将识别结果整理成表格或结构化数据\n4. **异常处理**：如果图片模糊或信息不完整，在备注区说明\n\n## 注意事项\n- 保护用户的业务数据安全\n- 对于不确定的信息，明确告知用户\n- 保持回答的准确性和可靠性\n- 生成的方案需符合港口码头行业规范和安全标准';
+        const FORMAT_TEMPLATES = {
+            finance: `\n\n请按照以下财务单据格式输出：\n\n### 1. 单据基础信息区\n单据编号：XXX\n单据日期：YYYY-MM-DD\n审批人：XXX\n归属部门：XXX\n填报人：XXX\n填报日期：YYYY-MM-DD\n\n### 2. 核心费用明细区\n| 序号 | 费用事由 | 金额（元） | 支付方式 | 备注 |\n| --- | --- | --- | --- | --- |\n| 1 | 事由1 | 金额1 | 支付方式1 | 备注1 |\n\n### 3. 合计汇总区\n小写金额：￥XXX.XX元\n大写金额：XXX元整\n\n### 4. 异常备注区\n无异常`,
             
-            if (uploadedFileContent) {
-                systemPrompt += '\n\n用户上传的文件内容如下（文件名：' + uploadedFileName + '）：\n' + uploadedFileContent;
+            hr_recruitment: `\n\n请按照以下人事招收方案格式输出：\n\n### 1. 岗位需求分析区\n岗位名称：XXX\n岗位类别：[管理岗/技术岗/操作岗/后勤岗]\n需求人数：X人\n岗位职责：XXX\n任职要求：XXX\n\n### 2. 招聘流程区\n| 招聘阶段 | 时间安排 | 主要任务 |\n| --- | --- | --- |\n| 简历筛选 | 第1-3天 | 筛选符合条件的简历 |\n| 面试评估 | 第4-7天 | 进行初试和复试 |\n| 录用通知 | 第8天 | 发放录用通知 |\n| 入职培训 | 第9-14天 | 进行岗前培训 |\n\n### 3. 面试评估标准区\n| 评估维度 | 权重 | 评分标准 |\n| --- | --- | --- |\n| 专业技能 | 30% | 相关工作经验和专业知识 |\n| 综合素质 | 25% | 沟通能力、团队协作、责任心 |\n| 岗位匹配度 | 25% | 性格特点与岗位要求的匹配程度 |\n| 发展潜力 | 20% | 学习能力和职业发展潜力 |\n\n### 4. 备注区\n备注信息：XXX`,
+            
+            internship: `\n\n请按照以下实习方案格式输出：\n\n### 1. 实习生基本信息区\n姓名：XXX\n专业：XXX\n性格特点：XXX\n实习岗位：XXX\n实习周期：XXX\n\n### 2. 岗位匹配分析区\n性格特点分析：XXX\n推荐岗位：XXX\n匹配理由：XXX\n\n### 3. 培训计划区\n| 阶段 | 时间 | 培训内容 |\n| --- | --- | --- |\n| 第一阶段 | 第1-2周 | 公司概况、安全培训、岗位认知 |\n| 第二阶段 | 第3-4周 | 专业技能培训、导师带教 |\n| 第三阶段 | 第5-8周 | 独立工作实践、项目参与 |\n\n### 4. 考核标准区\n| 考核维度 | 权重 | 考核方式 |\n| --- | --- | --- |\n| 工作态度 | 30% | 日常表现、出勤情况 |\n| 专业技能 | 35% | 实操考核、技能测试 |\n| 团队协作 | 20% | 同事评价、团队项目表现 |\n| 综合能力 | 15% | 实习总结报告、答辩 |`,
+            
+            safety: `\n\n请按照以下安全生产方案格式输出：\n\n### 1. 设备/岗位信息区\n设备类型：[吊机/叉车/铲车/装卸人员]\n风险等级：[高/中/低]\n适用范围：XXX\n\n### 2. 安全操作规程区\n| 操作步骤 | 安全要求 |\n| --- | --- |\n| 步骤1 | 安全要求1 |\n| 步骤2 | 安全要求2 |\n| 步骤3 | 安全要求3 |\n\n### 3. 安全风险与防控区\n| 风险类型 | 风险描述 | 防控措施 |\n| --- | --- | --- |\n| 风险1 | 风险描述1 | 防控措施1 |\n| 风险2 | 风险描述2 | 防控措施2 |\n\n### 4. 应急预案区\n| 应急事件 | 应急措施 | 责任人员 |\n| --- | --- | --- |\n| 事件1 | 措施1 | 责任人1 |\n| 事件2 | 措施2 | 责任人2 |`,
+            
+            image_analysis: `\n\n请分析以下图片识别内容：\n1. 内容摘要：简要概括图片中的核心内容\n2. 分类标签：财务票据/安全文档/人事资料/合同协议/物流单据/行政通知/其他\n3. 关键信息提取：提取图片中的重要数据和信息\n4. 整理建议：针对该类型文档的整理建议\n\n请使用Markdown格式输出。`
+        };
+        
+        function detectRequestType(text) {
+            const hrKeywords = ['人事', '招聘', '招收', '入职', '面试', '简历'];
+            const internshipKeywords = ['实习', '实习生', '性格', '培训计划', '考核'];
+            const safetyKeywords = ['安全', '吊机', '叉车', '铲车', '装卸', '操作规程', '应急预案', '风险'];
+            const financeKeywords = ['财务', '报表', '报销', '金额', '费用', '预算', '成本', '收入', '支出'];
+            
+            const textLower = text.toLowerCase();
+            
+            if (internshipKeywords.some(k => textLower.includes(k.toLowerCase()))) {
+                return 'internship';
+            }
+            if (safetyKeywords.some(k => textLower.includes(k.toLowerCase()))) {
+                return 'safety';
+            }
+            if (hrKeywords.some(k => textLower.includes(k.toLowerCase()))) {
+                return 'hr_recruitment';
+            }
+            if (financeKeywords.some(k => textLower.includes(k.toLowerCase()))) {
+                return 'finance';
+            }
+            return null;
+        }
+        
+        function truncateContent(content, maxLength) {
+            if (!content || content.length <= maxLength) {
+                return content;
+            }
+            const half = Math.floor(maxLength / 2);
+            return content.substring(0, half) + '\n...（内容已截断，保留核心信息）\n' + content.substring(content.length - half);
+        }
+        
+        async function callDeepSeekAPI(text) {
+            const SYSTEM_PROMPT = '你是一位专业的港口码头管理智能助手，具备丰富的港口运营管理经验和专业知识，涵盖财务管理、人事管理和安全生产等多个领域。请根据用户请求提供专业、准确的回答，使用Markdown格式输出，关键内容加粗。';
+            
+            let userContent = text;
+            const requestType = detectRequestType(text);
+            if (requestType && FORMAT_TEMPLATES[requestType]) {
+                userContent += FORMAT_TEMPLATES[requestType];
             }
             
-            const userContent = text;
+            if (uploadedFileContent) {
+                const truncatedContent = truncateContent(uploadedFileContent, 3000);
+                userContent = `文件内容（${uploadedFileName}）：\n${truncatedContent}\n\n问题：${userContent}`;
+            }
             
+            const recentHistory = chatHistory.slice(-5);
             const messages = [
-                { role: 'system', content: systemPrompt },
-                ...chatHistory.map(function(h) { 
+                { role: 'system', content: SYSTEM_PROMPT },
+                ...recentHistory.map(function(h) { 
                     return { 
                         role: h.user ? 'user' : 'assistant', 
                         content: h.user || h.assistant 
@@ -443,7 +542,7 @@
             const response = await fetch(BASE_URL + '/v1/chat/completions', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + API_KEY },
-                body: JSON.stringify({ model: MODEL, messages: messages, temperature: 0.5, max_tokens: 2048, stream: false })
+                body: JSON.stringify({ model: MODEL, messages: messages, temperature: 0.5, max_tokens: 2048, stream: true })
             });
             
             if (!response.ok) {
@@ -460,10 +559,7 @@
                 throw new Error(errorMessage);
             }
             
-            const data = await response.json();
-            const answer = data.choices[0].message.content;
-            chatHistory.push({ user: text, assistant: answer });
-            return answer;
+            return response.body;
         }
         
         function generateExcelFile(content) {
