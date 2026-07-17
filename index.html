@@ -9,6 +9,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/11.1.1/marked.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/5.0.4/tesseract.min.js"></script>
+    <script src="desensitization_proxy.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif; background: linear-gradient(135deg, #0c1445 0%, #1a237e 50%, #283593 100%); min-height: 100vh; display: flex; }
@@ -54,6 +55,13 @@
         .input-container .send-btn { background: linear-gradient(135deg, #42a5f5, #1e88e5); color: white; }
         .input-container .send-btn:hover { background: linear-gradient(135deg, #1e88e5, #1565c0); }
         .input-container .send-btn:disabled { background: rgba(255,255,255,0.2); cursor: not-allowed; }
+        .desensitize-toggle { display: flex; align-items: center; cursor: pointer; margin-right: 10px; }
+        .desensitize-toggle input[type="checkbox"] { display: none; }
+        .toggle-slider { width: 40px; height: 20px; background: #4a5568; border-radius: 10px; position: relative; transition: background 0.3s; }
+        .toggle-slider::before { content: ''; position: absolute; width: 16px; height: 16px; background: white; border-radius: 50%; top: 2px; left: 2px; transition: transform 0.3s; }
+        .desensitize-toggle input[type="checkbox"]:checked + .toggle-slider { background: #68d391; }
+        .desensitize-toggle input[type="checkbox"]:checked + .toggle-slider::before { transform: translateX(20px); }
+        .toggle-label { margin-left: 8px; color: rgba(255,255,255,0.8); font-size: 14px; }
         .download-section { margin-top: 10px; }
         .download-btn { display: inline-block; padding: 8px 16px; background: #42a5f5; color: white; text-decoration: none; border-radius: 8px; font-size: 14px; transition: all 0.3s ease; }
         .download-btn:hover { background: #1e88e5; }
@@ -125,6 +133,11 @@
                     <button class="upload-btn" id="upload-btn">📁 上传文件</button>
                     <input type="file" id="file-input" accept=".xlsx,.xls,.docx,.doc,.pptx,.ppt,.pdf,.txt,.jpg,.jpeg,.png,.gif,.bmp,.webp">
                     <input type="text" id="user-input" placeholder="请输入您的问题..." autocomplete="off">
+                    <label class="desensitize-toggle">
+                        <input type="checkbox" id="desensitize-toggle">
+                        <span class="toggle-slider"></span>
+                        <span class="toggle-label">脱敏上传</span>
+                    </label>
                     <button class="send-btn" id="send-btn">发送</button>
                 </div>
             </div>
@@ -550,7 +563,12 @@
                                 const content = json.choices?.[0]?.delta?.content || '';
                                 if (content) {
                                     fullResponse += content;
-                                    streamContent.innerHTML = displayDesensitize(marked.parse(fullResponse));
+                                    let displayContent = fullResponse;
+                                    if (isDesensitizeEnabled && currentMapping) {
+                                        desensitizationProxy.setMapping(currentMapping);
+                                        displayContent = desensitizationProxy.restore(displayContent);
+                                    }
+                                    streamContent.innerHTML = displayDesensitize(marked.parse(displayContent));
                                     messagesContainer.scrollTop = messagesContainer.scrollHeight;
                                 }
                             } catch (e) {
@@ -639,7 +657,7 @@
         }
         
         async function callDeepSeekAPI(text, isQuickAction = false) {
-            const SYSTEM_PROMPT = '你是一位专业的港口码头管理智能助手，擅长人事管理、安全生产、财务管理和文档处理。请使用自然语言与用户交流，在缺少必要信息时主动询问，然后生成结构化的方案。';
+            let systemPrompt = '你是一位专业的港口码头管理智能助手，擅长人事管理、安全生产、财务管理和文档处理。请使用自然语言与用户交流，在缺少必要信息时主动询问，然后生成结构化的方案。';
             
             let userContent = text;
             const requestType = detectRequestType(text);
@@ -647,14 +665,27 @@
                 userContent += FORMAT_TEMPLATES[requestType];
             }
             
+            const desensitizeToggle = document.getElementById('desensitize-toggle');
+            const isDesensitizeEnabled = desensitizeToggle && desensitizeToggle.checked;
+            
+            if (isDesensitizeEnabled) {
+                userContent = desensitizationProxy.desensitize(userContent);
+                systemPrompt += '\n\n重要：用户消息中包含如[PH1][ID1][AM1]等方括号占位符，请原样保留这些占位符，不要修改或替换它们。';
+            }
+            
+            const currentMapping = isDesensitizeEnabled ? desensitizationProxy.getMapping() : null;
+            
             if (uploadedFileContent) {
-                const truncatedContent = truncateContent(uploadedFileContent, 2000);
+                let truncatedContent = truncateContent(uploadedFileContent, 2000);
+                if (isDesensitizeEnabled) {
+                    truncatedContent = desensitizationProxy.desensitize(truncatedContent);
+                }
                 userContent = `文件内容（${uploadedFileName}）：\n${truncatedContent}\n\n问题：${userContent}`;
             }
             
             const recentHistory = chatHistory.slice(-3);
             const messages = [
-                { role: 'system', content: SYSTEM_PROMPT },
+                { role: 'system', content: systemPrompt },
                 ...recentHistory.map(function(h) { 
                     return { 
                         role: h.user ? 'user' : 'assistant', 
