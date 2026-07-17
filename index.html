@@ -5,8 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>码头港口财务管理智能助手</title>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@4.0.379/build/pdf.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@4.0.379/build/pdf.worker.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <style>
@@ -172,21 +170,34 @@
                     reader.onerror = reject;
                     reader.readAsArrayBuffer(file);
                 });
-                const data = new Uint8Array(arrayBuffer);
-                if (typeof pdfjsLib !== 'undefined') {
-                    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.worker.min.js';
+                const zip = new JSZip();
+                await zip.loadAsync(arrayBuffer);
+                let text = `=== PDF文件: ${file.name} ===\n`;
+                const pageRegex = /^page-\d+\.txt$/;
+                const pageFiles = Object.keys(zip.files).filter(name => pageRegex.test(name));
+                pageFiles.sort((a, b) => {
+                    const numA = parseInt(a.match(/-(\d+)/)[1]);
+                    const numB = parseInt(b.match(/-(\d+)/)[1]);
+                    return numA - numB;
+                });
+                for (const pageFile of pageFiles) {
+                    const pageText = await zip.file(pageFile).async('string');
+                    const pageNum = pageFile.match(/-(\d+)/)[1];
+                    text += `\n--- 第 ${pageNum} 页 ---\n`;
+                    text += pageText.trim();
                 }
-                const doc = await pdfjsLib.getDocument({ data }).promise;
-                let text = '';
-                for (let i = 1; i <= doc.numPages; i++) {
-                    const page = await doc.getPage(i);
-                    const content = await page.getTextContent();
-                    text += content.items.map(item => item.str).join(' ') + '\n';
+                if (zip.files['Content.txt'] || zip.files['content.txt']) {
+                    const contentFile = zip.files['Content.txt'] || zip.files['content.txt'];
+                    const contentText = await contentFile.async('string');
+                    text = contentText.trim() + '\n\n' + text;
                 }
-                return text;
+                if (Object.keys(zip.files).length === 0) {
+                    throw new Error('Empty PDF');
+                }
+                return text.trim() || `PDF文件内容\n文件名: ${file.name}\n大小: ${file.size}字节\n提示：该PDF文件内容无法解析，请复制文本内容后重新上传。`;
             } catch (e) {
                 console.error('PDF parsing failed:', e);
-                return await readAsText(file);
+                return `PDF文件内容\n文件名: ${file.name}\n大小: ${file.size}字节\n提示：请将PDF内容复制为文本后重新上传。`;
             }
         }
         
