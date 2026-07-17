@@ -543,7 +543,13 @@
             let fullResponse = '';
             
             try {
-                const body = await callDeepSeekAPI(text, isQuickAction);
+                const desensitizeToggle = document.getElementById('desensitize-toggle');
+                const isDesensitizeEnabled = desensitizeToggle && desensitizeToggle.checked;
+                
+                const result = await callDeepSeekAPI(text, isQuickAction);
+                const body = result.body;
+                const currentMapping = result.mapping;
+                
                 const reader = body.getReader();
                 const decoder = new TextDecoder();
                 
@@ -717,7 +723,7 @@
                 throw new Error(errorMessage);
             }
             
-            return response.body;
+            return { body: response.body, mapping: currentMapping };
         }
         
         function generateExcelFile(content) {
