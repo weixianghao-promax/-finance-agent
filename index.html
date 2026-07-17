@@ -43,61 +43,68 @@
         @keyframes typing { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1); } }
         .chat-input-area { padding: 20px 30px; background: rgba(0,0,0,0.2); backdrop-filter: blur(10px); border-top: 1px solid rgba(255,255,255,0.1); }
         .input-container { display: flex; gap: 12px; background: rgba(255,255,255,0.1); border-radius: 25px; padding: 8px; border: 1px solid rgba(255,255,255,0.2); }
-        .input-container input { flex: 1; background: transparent; border: none; outline: none; padding: 12px 20px; color: white; font-size: 15px; }
-        .input-container input::placeholder { color: rgba(255,255,255,0.5); }
+        .input-container input[type="text"] { flex: 1; background: transparent; border: none; outline: none; padding: 12px 20px; color: white; font-size: 15px; }
+        .input-container input[type="text"]::placeholder { color: rgba(255,255,255,0.5); }
         .input-container button { padding: 12px 24px; border: none; border-radius: 20px; cursor: pointer; font-size: 15px; font-weight: 600; transition: all 0.3s ease; }
         .input-container .upload-btn { background: rgba(255,255,255,0.1); color: white; padding: 12px 16px; }
         .input-container .upload-btn:hover { background: rgba(255,255,255,0.2); }
         .input-container .send-btn { background: linear-gradient(135deg, #42a5f5, #1e88e5); color: white; }
-        .input-container .send-btn:hover { transform: translateY(-2px); box-shadow: 0 4px 15px rgba(66,165,245,0.4); }
-        .input-container .send-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
-        #file-input { display: none; }
-        .download-section { margin-top: 15px; padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.2); }
-        .download-btn { display: inline-flex; align-items: center; gap: 8px; padding: 10px 24px; background: linear-gradient(135deg, #42a5f5, #1e88e5); color: white; text-decoration: none; border-radius: 12px; font-size: 14px; font-weight: 600; transition: all 0.3s ease; }
-        .download-btn:hover { transform: translateY(-2px); box-shadow: 0 4px 15px rgba(66,165,245,0.4); }
-        .download-btn i { font-size: 16px; }
-        .welcome-message { background: rgba(255,255,255,0.08); padding: 25px; border-radius: 16px; margin-bottom: 20px; }
-        .welcome-message h3 { margin-bottom: 15px; color: #42a5f5; }
-        .welcome-message ul { list-style: none; padding-left: 0; }
-        .welcome-message li { padding: 8px 0; padding-left: 20px; position: relative; color: rgba(255,255,255,0.8); }
-        .welcome-message li::before { content: '✓'; position: absolute; left: 0; color: #66bb6a; }
-        @media (max-width: 768px) { .sidebar { display: none; } .message { max-width: 95%; } .chat-input-area { padding: 15px; } }
+        .input-container .send-btn:hover { background: linear-gradient(135deg, #1e88e5, #1565c0); }
+        .input-container .send-btn:disabled { background: rgba(255,255,255,0.2); cursor: not-allowed; }
+        .download-section { margin-top: 10px; }
+        .download-btn { display: inline-block; padding: 8px 16px; background: #42a5f5; color: white; text-decoration: none; border-radius: 8px; font-size: 14px; transition: all 0.3s ease; }
+        .download-btn:hover { background: #1e88e5; }
+        .input-container input[type="file"] { display: none; }
+        pre { white-space: pre-wrap; margin: 0; }
+        table { border-collapse: collapse; width: 100%; }
+        th, td { border: 1px solid rgba(255,255,255,0.2); padding: 8px; text-align: left; }
+        th { background: rgba(255,255,255,0.1); }
     </style>
 </head>
 <body>
     <div class="sidebar">
         <h2>📊 功能菜单</h2>
-        <div class="nav-item active">📄 报表生成</div>
-        <div class="nav-item">📈 数据分析</div>
-        <div class="nav-item">💰 预算管理</div>
-        <div class="nav-item">🛡️ 安全培训</div>
+        <div class="nav-item active" onclick="sendQuickAction('帮我整理财务报表')">💬 智能对话</div>
+        <div class="nav-item" onclick="sendQuickAction('帮我生成一份报销汇总表')">📊 报表生成</div>
+        <div class="nav-item" onclick="sendQuickAction('帮我分析财务数据')">📈 数据分析</div>
+        <div class="nav-item" onclick="sendQuickAction('帮我制定预算方案')">💰 预算管理</div>
+        <div class="nav-item" onclick="sendQuickAction('帮我制定安全培训方案')">🛡️ 安全培训</div>
+        
         <div class="quick-actions">
-            <h2>⚡ 快速操作</h2>
-            <div class="quick-action-item" onclick="sendQuickAction('生成日报')">📅 生成日报</div>
-            <div class="quick-action-item" onclick="sendQuickAction('生成周报')">📆 生成周报</div>
-            <div class="quick-action-item" onclick="sendQuickAction('生成月报')">📋 生成月报</div>
-            <div class="quick-action-item" onclick="sendQuickAction('成本分析')">📊 成本分析</div>
+            <h3>⚡ 快速操作</h3>
+            <div class="quick-action-item" onclick="sendQuickAction('帮我生成今日工作日报')">📝 生成日报</div>
+            <div class="quick-action-item" onclick="sendQuickAction('帮我生成本周工作周报')">📅 生成周报</div>
+            <div class="quick-action-item" onclick="sendQuickAction('帮我生成本月工作月报')">📆 生成月报</div>
+            <div class="quick-action-item" onclick="sendQuickAction('帮我进行成本分析')">📉 成本分析</div>
+            <div class="quick-action-item" onclick="clearHistory()">🗑️ 清除历史</div>
         </div>
     </div>
+    
     <div class="main-content">
         <div class="header">
             <h1>🚢 码头港口财务管理智能助手</h1>
-            <div class="model-info">🤖 DeepSeek 大模型</div>
+            <div class="model-info">接入 DeepSeek 大模型</div>
         </div>
+        
         <div class="chat-container">
             <div class="chat-messages" id="chat-messages">
-                <div class="welcome-message">
-                    <h3>您好！我是您的码头港口财务管理智能助手。</h3>
-                    <ul>
-                        <li>📊 帮您生成财务报表</li>
-                        <li>📈 分析财务数据和指标</li>
-                        <li>💰 进行预算编制和成本控制</li>
-                        <li>📝 整理会议记录</li>
-                        <li>📋 制定安全培训方案</li>
-                    </ul>
-                    <p style="margin-top:15px;color:rgba(255,255,255,0.6);">请输入您的问题，我将为您提供专业的服务！</p>
+                <div class="message assistant">
+                    <div class="avatar">🤖</div>
+                    <div class="message-content">
+                        <p>您好！我是您的码头港口财务管理智能助手。</p>
+                        <p>我可以帮助您：</p>
+                        <ul>
+                            <li>📊 帮您生成财务报表</li>
+                            <li>📈 分析财务数据和指标</li>
+                            <li>💰 进行预算编制和成本控制</li>
+                            <li>📝 整理会议记录</li>
+                            <li>📋 制定安全培训方案</li>
+                        </ul>
+                        <p>请输入您的问题，我将为您提供专业的服务！</p>
+                    </div>
                 </div>
             </div>
+            
             <div class="chat-input-area">
                 <div class="input-container">
                     <button class="upload-btn" id="upload-btn">📁 上传文件</button>
@@ -108,6 +115,7 @@
             </div>
         </div>
     </div>
+    
     <script>
         const API_KEY = 'sk-2f585db300124e90ada1f8f5980df367';
         const BASE_URL = 'https://api.deepseek.com';
@@ -122,21 +130,21 @@
         const fileInput = document.getElementById('file-input');
         
         sendBtn.addEventListener('click', sendMessage);
-        userInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendMessage(); });
-        uploadBtn.addEventListener('click', () => fileInput.click());
+        userInput.addEventListener('keypress', function(e) { if (e.key === 'Enter') sendMessage(); });
+        uploadBtn.addEventListener('click', function() { fileInput.click(); });
         
-        fileInput.addEventListener('change', async (e) => {
+        fileInput.addEventListener('change', async function(e) {
             const file = e.target.files[0];
             if (!file) return;
-            addMessage(`📁 正在上传文件: ${file.name}`, 'user');
+            addMessage('📁 正在上传文件: ' + file.name, 'user');
             sendBtn.disabled = true;
             try {
                 const content = await readFileContent(file);
                 uploadedFileContent = content;
                 uploadedFileName = file.name;
-                addMessage(`✅ 文件上传成功：${file.name}（${file.size}字节）\n文件内容已解析，您可以提问了。`, 'assistant');
+                addMessage('✅ 文件上传成功：' + file.name + '（' + file.size + '字节）\n文件内容已解析，您可以提问了。', 'assistant');
             } catch (error) {
-                addMessage(`❌ 文件上传失败：${error.message}\n请尝试将文件内容复制为文本后重新上传。`, 'assistant');
+                addMessage('❌ 文件上传失败：' + error.message + '\n请尝试将文件内容复制为文本后重新上传。', 'assistant');
             } finally {
                 sendBtn.disabled = false;
                 fileInput.value = '';
@@ -154,58 +162,23 @@
         }
         
         function readAsText(file) {
-            return new Promise((resolve, reject) => {
+            return new Promise(function(resolve, reject) {
                 const reader = new FileReader();
-                reader.onload = (e) => resolve(e.target.result);
+                reader.onload = function(e) { resolve(e.target.result); };
                 reader.onerror = reject;
                 reader.readAsText(file, 'utf-8');
             });
         }
         
         async function readPDF(file) {
-            try {
-                const arrayBuffer = await new Promise((resolve, reject) => {
-                    const reader = new FileReader();
-                    reader.onload = (e) => resolve(e.target.result);
-                    reader.onerror = reject;
-                    reader.readAsArrayBuffer(file);
-                });
-                const zip = new JSZip();
-                await zip.loadAsync(arrayBuffer);
-                let text = `=== PDF文件: ${file.name} ===\n`;
-                const pageRegex = /^page-\d+\.txt$/;
-                const pageFiles = Object.keys(zip.files).filter(name => pageRegex.test(name));
-                pageFiles.sort((a, b) => {
-                    const numA = parseInt(a.match(/-(\d+)/)[1]);
-                    const numB = parseInt(b.match(/-(\d+)/)[1]);
-                    return numA - numB;
-                });
-                for (const pageFile of pageFiles) {
-                    const pageText = await zip.file(pageFile).async('string');
-                    const pageNum = pageFile.match(/-(\d+)/)[1];
-                    text += `\n--- 第 ${pageNum} 页 ---\n`;
-                    text += pageText.trim();
-                }
-                if (zip.files['Content.txt'] || zip.files['content.txt']) {
-                    const contentFile = zip.files['Content.txt'] || zip.files['content.txt'];
-                    const contentText = await contentFile.async('string');
-                    text = contentText.trim() + '\n\n' + text;
-                }
-                if (Object.keys(zip.files).length === 0) {
-                    throw new Error('Empty PDF');
-                }
-                return text.trim() || `PDF文件内容\n文件名: ${file.name}\n大小: ${file.size}字节\n提示：该PDF文件内容无法解析，请复制文本内容后重新上传。`;
-            } catch (e) {
-                console.error('PDF parsing failed:', e);
-                return `PDF文件内容\n文件名: ${file.name}\n大小: ${file.size}字节\n提示：请将PDF内容复制为文本后重新上传。`;
-            }
+            return 'PDF文件内容\n文件名: ' + file.name + '\n大小: ' + file.size + '字节\n提示：请将PDF内容复制为文本后重新上传，或转为Word格式。';
         }
         
         async function readWord(file) {
             try {
-                const arrayBuffer = await new Promise((resolve, reject) => {
+                const arrayBuffer = await new Promise(function(resolve, reject) {
                     const reader = new FileReader();
-                    reader.onload = (e) => resolve(e.target.result);
+                    reader.onload = function(e) { resolve(e.target.result); };
                     reader.onerror = reject;
                     reader.readAsArrayBuffer(file);
                 });
@@ -223,7 +196,7 @@
                     }
                     return text.replace(/\n+/g, '\n').trim();
                 }
-                return `Word文件内容\n文件名: ${file.name}\n提示：部分Word格式可能无法完全解析，请复制文本内容重新上传。`;
+                return 'Word文件内容\n文件名: ' + file.name + '\n提示：部分Word格式可能无法完全解析，请复制文本内容重新上传。';
             } catch (e) {
                 console.error('Word parsing failed:', e);
                 return await readAsText(file);
@@ -232,20 +205,20 @@
         
         async function readExcel(file) {
             try {
-                const arrayBuffer = await new Promise((resolve, reject) => {
+                const arrayBuffer = await new Promise(function(resolve, reject) {
                     const reader = new FileReader();
-                    reader.onload = (e) => resolve(e.target.result);
+                    reader.onload = function(e) { resolve(e.target.result); };
                     reader.onerror = reject;
                     reader.readAsArrayBuffer(file);
                 });
                 const data = new Uint8Array(arrayBuffer);
                 const workbook = XLSX.read(data, { type: 'array' });
                 let text = '';
-                workbook.SheetNames.forEach(sheetName => {
-                    text += `=== Sheet: ${sheetName} ===\n`;
+                workbook.SheetNames.forEach(function(sheetName) {
+                    text += '=== Sheet: ' + sheetName + ' ===\n';
                     const sheet = workbook.Sheets[sheetName];
                     const json = XLSX.utils.sheet_to_json(sheet, { header: 1 });
-                    json.forEach(row => {
+                    json.forEach(function(row) {
                         text += row.join('\t') + '\n';
                     });
                     text += '\n';
@@ -253,29 +226,30 @@
                 return text;
             } catch (e) {
                 console.error('Excel parsing failed:', e);
-                return `Excel文件内容（解析失败）\n文件名: ${file.name}\n大小: ${file.size}字节\n提示：请将Excel内容复制为文本后重新上传，或另存为CSV格式。`;
+                return 'Excel文件内容（解析失败）\n文件名: ' + file.name + '\n大小: ' + file.size + '字节\n提示：请将Excel内容复制为文本后重新上传，或另存为CSV格式。';
             }
         }
         
         async function readPPT(file) {
             try {
-                const arrayBuffer = await new Promise((resolve, reject) => {
+                const arrayBuffer = await new Promise(function(resolve, reject) {
                     const reader = new FileReader();
-                    reader.onload = (e) => resolve(e.target.result);
+                    reader.onload = function(e) { resolve(e.target.result); };
                     reader.onerror = reject;
                     reader.readAsArrayBuffer(file);
                 });
                 const zip = new JSZip();
                 await zip.loadAsync(arrayBuffer);
-                let text = `=== PPT文件: ${file.name} ===\n`;
+                let text = '=== PPT文件: ' + file.name + ' ===\n';
                 const slideRegex = /^ppt\/slides\/slide\d+\.xml$/;
-                const slideFiles = Object.keys(zip.files).filter(name => slideRegex.test(name));
-                slideFiles.sort((a, b) => {
+                const slideFiles = Object.keys(zip.files).filter(function(name) { return slideRegex.test(name); });
+                slideFiles.sort(function(a, b) {
                     const numA = parseInt(a.match(/slide(\d+)/)[1]);
                     const numB = parseInt(b.match(/slide(\d+)/)[1]);
                     return numA - numB;
                 });
-                for (const slideFile of slideFiles) {
+                for (let i = 0; i < slideFiles.length; i++) {
+                    const slideFile = slideFiles[i];
                     const xmlContent = await zip.file(slideFile).async('string');
                     const parser = new DOMParser();
                     const doc = parser.parseFromString(xmlContent, 'application/xml');
@@ -286,23 +260,14 @@
                         slideText += node.textContent + '\n';
                     }
                     const slideNum = slideFile.match(/slide(\d+)/)[1];
-                    text += `\n--- 幻灯片 ${slideNum} ---\n`;
+                    text += '\n--- 幻灯片 ' + slideNum + ' ---\n';
                     text += slideText.replace(/\n+/g, '\n').trim() || '(空白幻灯片)';
                     text += '\n';
-                }
-                if (zip.files['docProps/core.xml']) {
-                    const coreXml = await zip.file('docProps/core.xml').async('string');
-                    const parser = new DOMParser();
-                    const doc = parser.parseFromString(coreXml, 'application/xml');
-                    const title = doc.querySelector('dc\\:title, title');
-                    const creator = doc.querySelector('dc\\:creator, creator');
-                    if (title) text = `标题: ${title.textContent}\n\n${text}`;
-                    if (creator) text = `作者: ${creator.textContent}\n${text}`;
                 }
                 return text.trim();
             } catch (e) {
                 console.error('PPT parsing failed:', e);
-                return `PPT文件内容（解析失败）\n文件名: ${file.name}\n大小: ${file.size}字节\n提示：请将PPT转为PDF后重新上传，或复制文本内容重新上传。`;
+                return 'PPT文件内容（解析失败）\n文件名: ' + file.name + '\n大小: ' + file.size + '字节\n提示：请将PPT转为PDF后重新上传，或复制文本内容重新上传。';
             }
         }
         
@@ -316,116 +281,36 @@
             try {
                 const response = await callDeepSeekAPI(text);
                 removeTypingIndicator(typingIndicator);
-                const downloadUrl = generateExcelFile(response);
-                addMessage(response, 'assistant', downloadUrl);
+                const downloadFileName = generateExcelFile(response);
+                addMessage(response, 'assistant', downloadFileName);
             } catch (error) {
                 removeTypingIndicator(typingIndicator);
                 console.error('发送消息失败:', error);
-                addMessage(`❌ 发生错误：${error.message}`, 'assistant');
+                addMessage('❌ 发生错误：' + error.message, 'assistant');
             } finally {
                 sendBtn.disabled = false;
             }
         }
         
         async function callDeepSeekAPI(text) {
-            let systemPrompt = `你是一位专业的码头港口财务智能顾问，具备丰富的财务管理经验和专业知识。
-
-## 核心职责
-1. **财务数据分析**：深入分析码头港口的收入、支出、利润等财务数据
-2. **报表生成**：生成各类财务报表，如分类汇总表、收支明细表、成本分析表
-3. **财务咨询**：提供专业的财务建议和决策支持
-4. **票据处理**：识别和处理各类财务票据信息
-5. **预算管理**：协助进行预算编制和成本控制
-
-## 业务领域知识
-- 港口码头主要收入来源：装卸费、堆存费、船舶代理费、拖轮费等
-- 主要成本项目：人工成本、设备维护、能源消耗、码头设施折旧等
-- 财务指标：吞吐量、装卸效率、单位成本、利润率等
-
-## 重要指导原则
-### 处理模糊/笼统语言
-当用户的问题较为笼统或模糊时（如"帮我整理一下"、"分析这份文件"、"给我一份表格"等），请根据以下步骤处理：
-1. **主动推断意图**：结合已上传的文件内容和上下文，推断用户的真实需求
-2. **默认行为**：如果用户没有明确说明具体需求，默认进行以下操作：
-   - 对上传的财务文件进行分类整理
-   - 生成收支分类汇总表
-   - 提供关键财务分析结论
-3. **不要拒绝回答**：无论用户的问题多么笼统，都要给出合理的回应，不要说"请提供更具体的需求"或"无法理解"
-
-### 输出格式要求（严格按照以下三种格式输出）
-
-#### 1. 纯文本报销汇总表格式（当用户询问报销汇总时使用）
-使用纯文本表格形式，便于复制粘贴，格式如下：
-费用类别 | 主要支出项目 | 金额（元） | 说明
--------- | ----------- | ---------- | ----
-类别1 | 项目1 | 金额1 | 说明1
-类别2 | 项目2 | 金额2 | 说明2
-
-#### 2. Markdown格式（日常对话、数据分析、财务咨询时使用）
-- 使用Markdown语法进行格式化
-- 表格使用|分隔
-- 重点内容使用**加粗**
-- 列表使用-或*
-- 标题使用#
-
-#### 3. 文件格式（当用户提到飞书、企业微信等办公软件时使用）
-- 用户提到"飞书"、"企业微信"、"钉钉"、"邮件"等场景时，提示用户可以下载Excel/Word/PPT/PDF文件
-- 自动生成整理后的文件并提供下载链接
-- 根据原始文件类型生成对应格式：Excel→Excel、Word→Word、PPT→PPT、PDF→Word
-
-### 财务单据标准化输出结构（必须包含以下4个区域）
-
-#### 1. 单据基础信息区
-```
-单据编号：XXX
-单据日期：YYYY-MM-DD
-审批人：XXX
-归属部门：XXX
-填报人：XXX
-填报日期：YYYY-MM-DD
-```
-
-#### 2. 核心费用明细区
-```
-| 序号 | 费用事由 | 金额（元） | 支付方式 | 备注 |
-| --- | --- | --- | --- | --- |
-| 1 | 事由1 | 金额1 | 支付方式1 | 备注1 |
-| 2 | 事由2 | 金额2 | 支付方式2 | 备注2 |
-| ... | ... | ... | ... | ... |
-```
-
-#### 3. 合计汇总区
-```
-小写金额：￥XXX.XX元
-大写金额：XXX元整
-```
-
-#### 4. 异常备注区
-```
-异常类型：[单据残缺/识别错误/金额不全/其他]
-异常描述：XXX
-处理建议：XXX
-```
-
-**注意**：如果没有异常，异常备注区显示"无异常"。每次输出财务单据时，必须完整包含以上4个区域。
-
-## 注意事项
-- 保护用户的财务数据安全
-- 对于不确定的信息，明确告知用户
-- 保持回答的准确性和可靠性`;
+            let systemPrompt = '你是一位专业的码头港口财务智能顾问，具备丰富的财务管理经验和专业知识。\n\n## 核心职责\n1. **财务数据分析**：深入分析码头港口的收入、支出、利润等财务数据\n2. **报表生成**：生成各类财务报表，如分类汇总表、收支明细表、成本分析表\n3. **财务咨询**：提供专业的财务建议和决策支持\n4. **票据处理**：识别和处理各类财务票据信息\n5. **预算管理**：协助进行预算编制和成本控制\n\n## 业务领域知识\n- 港口码头主要收入来源：装卸费、堆存费、船舶代理费、拖轮费等\n- 主要成本项目：人工成本、设备维护、能源消耗、码头设施折旧等\n- 财务指标：吞吐量、装卸效率、单位成本、利润率等\n\n## 重要指导原则\n### 处理模糊/笼统语言\n当用户的问题较为笼统或模糊时（如"帮我整理一下"、"分析这份文件"、"给我一份表格"等），请根据以下步骤处理：\n1. **主动推断意图**：结合已上传的文件内容和上下文，推断用户的真实需求\n2. **默认行为**：如果用户没有明确说明具体需求，默认进行以下操作：\n   - 对上传的财务文件进行分类整理\n   - 生成收支分类汇总表\n   - 提供关键财务分析结论\n3. **不要拒绝回答**：无论用户的问题多么笼统，都要给出合理的回应，不要说"请提供更具体的需求"或"无法理解"\n\n### 输出格式要求（严格按照以下三种格式输出）\n\n#### 1. 纯文本报销汇总表格式（当用户询问报销汇总时使用）\n使用纯文本表格形式，便于复制粘贴，格式如下：\n费用类别 | 主要支出项目 | 金额（元） | 说明\n-------- | ----------- | ---------- | ----\n类别1 | 项目1 | 金额1 | 说明1\n类别2 | 项目2 | 金额2 | 说明2\n\n#### 2. Markdown格式（日常对话、数据分析、财务咨询时使用）\n- 使用Markdown语法进行格式化\n- 表格使用|分隔\n- 重点内容使用**加粗**\n- 列表使用-或*\n- 标题使用#\n\n#### 3. 文件格式（当用户提到飞书、企业微信等办公软件时使用）\n- 用户提到"飞书"、"企业微信"、"钉钉"、"邮件"等场景时，提示用户可以下载Excel/Word/PPT/PDF文件\n- 自动生成整理后的文件并提供下载链接\n- 根据原始文件类型生成对应格式：Excel→Excel、Word→Word、PPT→PPT、PDF→Word\n\n### 财务单据标准化输出结构（必须包含以下4个区域）\n\n#### 1. 单据基础信息区\n```\n单据编号：XXX\n单据日期：YYYY-MM-DD\n审批人：XXX\n归属部门：XXX\n填报人：XXX\n填报日期：YYYY-MM-DD\n```\n\n#### 2. 核心费用明细区\n```\n| 序号 | 费用事由 | 金额（元） | 支付方式 | 备注 |\n| --- | --- | --- | --- | --- |\n| 1 | 事由1 | 金额1 | 支付方式1 | 备注1 |\n| 2 | 事由2 | 金额2 | 支付方式2 | 备注2 |\n| ... | ... | ... | ... | ... |\n```\n\n#### 3. 合计汇总区\n```\n小写金额：￥XXX.XX元\n大写金额：XXX元整\n```\n\n#### 4. 异常备注区\n```\n异常类型：[单据残缺/识别错误/金额不全/其他]\n异常描述：XXX\n处理建议：XXX\n```\n\n**注意**：如果没有异常，异常备注区显示"无异常"。每次输出财务单据时，必须完整包含以上4个区域。\n\n## 注意事项\n- 保护用户的财务数据安全\n- 对于不确定的信息，明确告知用户\n- 保持回答的准确性和可靠性';
+            
             if (uploadedFileContent) {
-                systemPrompt += `\n\n用户上传的文件内容如下（文件名：${uploadedFileName}）：\n${uploadedFileContent}`;
+                systemPrompt += '\n\n用户上传的文件内容如下（文件名：' + uploadedFileName + '）：\n' + uploadedFileContent;
             }
+            
             const messages = [
                 { role: 'system', content: systemPrompt },
-                ...chatHistory.map(h => ({ role: h.user ? 'user' : 'assistant', content: h.user || h.assistant })),
+                ...chatHistory.map(function(h) { return { role: h.user ? 'user' : 'assistant', content: h.user || h.assistant }; }),
                 { role: 'user', content: text }
             ];
-            const response = await fetch(`${BASE_URL}/v1/chat/completions`, {
+            
+            const response = await fetch(BASE_URL + '/v1/chat/completions', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${API_KEY}` },
+                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + API_KEY },
                 body: JSON.stringify({ model: MODEL, messages: messages, temperature: 0.7, max_tokens: 4096 })
             });
+            
             if (!response.ok) {
                 const errorText = await response.text();
                 console.error('API调用失败:', response.status, response.statusText);
@@ -439,6 +324,7 @@
                 }
                 throw new Error(errorMessage);
             }
+            
             const data = await response.json();
             const answer = data.choices[0].message.content;
             chatHistory.push({ user: text, assistant: answer });
@@ -449,17 +335,16 @@
             try {
                 const wb = XLSX.utils.book_new();
                 const ws = XLSX.utils.aoa_to_sheet([]);
-                
                 let rowIndex = 0;
                 
-                const addTitle = (title) => {
+                const addTitle = function(title) {
                     ws[XLSX.utils.encode_cell({ r: rowIndex, c: 0 })] = { t: 's', v: title };
                     ws['!merges'] = ws['!merges'] || [];
                     ws['!merges'].push({ s: { r: rowIndex, c: 0 }, e: { r: rowIndex, c: 4 } });
                     rowIndex++;
                 };
                 
-                const addInfoRow = (label, value) => {
+                const addInfoRow = function(label, value) {
                     ws[XLSX.utils.encode_cell({ r: rowIndex, c: 0 })] = { t: 's', v: label };
                     ws[XLSX.utils.encode_cell({ r: rowIndex, c: 1 })] = { t: 's', v: value };
                     ws['!merges'] = ws['!merges'] || [];
@@ -467,29 +352,27 @@
                     rowIndex++;
                 };
                 
-                const addTableHeader = (headers) => {
-                    headers.forEach((header, colIndex) => {
+                const addTableHeader = function(headers) {
+                    headers.forEach(function(header, colIndex) {
                         ws[XLSX.utils.encode_cell({ r: rowIndex, c: colIndex })] = { t: 's', v: header };
                     });
                     rowIndex++;
                 };
                 
-                const addTableRow = (values) => {
-                    values.forEach((value, colIndex) => {
+                const addTableRow = function(values) {
+                    values.forEach(function(value, colIndex) {
                         ws[XLSX.utils.encode_cell({ r: rowIndex, c: colIndex })] = { t: 's', v: value };
                     });
                     rowIndex++;
                 };
                 
-                const addEmptyRow = () => {
-                    rowIndex++;
-                };
+                const addEmptyRow = function() { rowIndex++; };
                 
                 const basicInfoMatch = content.match(/单据基础信息区[\s\S]*?```([\s\S]*?)```/);
                 if (basicInfoMatch) {
                     addTitle('一、单据基础信息');
                     const infoLines = basicInfoMatch[1].trim().split('\n');
-                    infoLines.forEach(line => {
+                    infoLines.forEach(function(line) {
                         const parts = line.split('：');
                         if (parts.length === 2) {
                             addInfoRow(parts[0].trim(), parts[1].trim());
@@ -501,10 +384,10 @@
                 const expenseMatch = content.match(/核心费用明细区[\s\S]*?```([\s\S]*?)```/);
                 if (expenseMatch) {
                     addTitle('二、核心费用明细');
-                    const expenseLines = expenseMatch[1].trim().split('\n').filter(l => l.trim());
-                    expenseLines.forEach(line => {
+                    const expenseLines = expenseMatch[1].trim().split('\n').filter(function(l) { return l.trim(); });
+                    expenseLines.forEach(function(line) {
                         if (line.startsWith('|')) {
-                            const cells = line.split('|').map(c => c.trim()).filter(c => c && c !== '---');
+                            const cells = line.split('|').map(function(c) { return c.trim(); }).filter(function(c) { return c && c !== '---'; });
                             if (cells.length > 0) {
                                 if (cells.includes('序号') || cells.includes('费用事由')) {
                                     addTableHeader(cells);
@@ -521,7 +404,7 @@
                 if (summaryMatch) {
                     addTitle('三、合计汇总');
                     const summaryLines = summaryMatch[1].trim().split('\n');
-                    summaryLines.forEach(line => {
+                    summaryLines.forEach(function(line) {
                         const parts = line.split('：');
                         if (parts.length === 2) {
                             addInfoRow(parts[0].trim(), parts[1].trim());
@@ -535,7 +418,7 @@
                     addTitle('四、异常备注');
                     const exceptionLines = exceptionMatch[1].trim().split('\n');
                     let hasException = false;
-                    exceptionLines.forEach(line => {
+                    exceptionLines.forEach(function(line) {
                         const parts = line.split('：');
                         if (parts.length === 2) {
                             const label = parts[0].trim();
@@ -557,11 +440,11 @@
                     let currentTable = [];
                     let inTable = false;
                     
-                    lines.forEach(line => {
+                    lines.forEach(function(line) {
                         const trimmed = line.trim();
                         if (trimmed.startsWith('|') && trimmed.endsWith('|')) {
                             inTable = true;
-                            const cells = trimmed.split('|').map(c => c.trim()).filter(c => c && c !== '---');
+                            const cells = trimmed.split('|').map(function(c) { return c.trim(); }).filter(function(c) { return c && c !== '---'; });
                             if (cells.length > 0) {
                                 currentTable.push(cells);
                             }
@@ -576,9 +459,9 @@
                         tables.push(currentTable);
                     }
                     
-                    tables.forEach(table => {
-                        table.forEach((row, ri) => {
-                            row.forEach((cell, ci) => {
+                    tables.forEach(function(table) {
+                        table.forEach(function(row, ri) {
+                            row.forEach(function(cell, ci) {
                                 ws[XLSX.utils.encode_cell({ r: rowIndex + ri, c: ci })] = { t: 's', v: cell };
                             });
                         });
@@ -589,10 +472,9 @@
                 XLSX.utils.book_append_sheet(wb, ws, '财务单据');
                 
                 const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-                const fileName = `财务单据_${dateStr}.xlsx`;
+                const fileName = '财务单据_' + dateStr + '.xlsx';
                 
                 XLSX.writeFile(wb, fileName);
-                
                 return fileName;
             } catch (e) {
                 console.error('Excel generation failed:', e);
@@ -600,24 +482,18 @@
             }
         }
         
-        function addMessage(text, role, downloadFileName = null) {
+        function addMessage(text, role, downloadFileName) {
             const messageDiv = document.createElement('div');
-            messageDiv.className = `message ${role}`;
+            messageDiv.className = 'message ' + role;
             const avatar = role === 'user' ? '👤' : '🤖';
             
             let downloadSection = '';
             if (downloadFileName) {
-                downloadSection = `
-                    <div class="download-section">
-                        <a href="#" onclick="downloadExcel('${downloadFileName}')" class="download-btn">
-                            📥 下载Excel表格
-                        </a>
-                    </div>
-                `;
+                downloadSection = '<div class="download-section"><a href="#" onclick="downloadExcel(\'' + downloadFileName + '\')" class="download-btn">📥 下载Excel表格</a></div>';
             }
             
             const formattedText = role === 'assistant' ? marked.parse(text) : text.replace(/\n/g, '<br>');
-            messageDiv.innerHTML = `<div class="avatar">${avatar}</div><div class="message-content">${formattedText}${downloadSection}</div>`;
+            messageDiv.innerHTML = '<div class="avatar">' + avatar + '</div><div class="message-content">' + formattedText + downloadSection + '</div>';
             messagesContainer.appendChild(messageDiv);
             messagesContainer.scrollTop = messagesContainer.scrollHeight;
         }
@@ -627,7 +503,7 @@
             if (msg && msg.querySelector('.download-btn')) {
                 msg.querySelector('.download-btn').innerHTML = '📥 下载中...';
             }
-            setTimeout(() => {
+            setTimeout(function() {
                 if (msg && msg.querySelector('.download-btn')) {
                     msg.querySelector('.download-btn').innerHTML = '📥 下载Excel表格';
                 }
@@ -637,7 +513,7 @@
         function addTypingIndicator() {
             const messageDiv = document.createElement('div');
             messageDiv.className = 'message assistant';
-            messageDiv.innerHTML = `<div class="avatar">🤖</div><div class="message-content"><div class="typing-indicator"><span></span><span></span><span></span></div></div>`;
+            messageDiv.innerHTML = '<div class="avatar">🤖</div><div class="message-content"><div class="typing-indicator"><span></span><span></span><span></span></div></div>';
             messagesContainer.appendChild(messageDiv);
             messagesContainer.scrollTop = messagesContainer.scrollHeight;
             return messageDiv;
@@ -651,7 +527,11 @@
             userInput.value = action;
             sendMessage();
         }
+        
+        function clearHistory() {
+            chatHistory = [];
+            messagesContainer.innerHTML = '<div class="message assistant"><div class="avatar">🤖</div><div class="message-content"><p>您好！我是您的码头港口财务管理智能助手。</p><p>我可以帮助您：</p><ul><li>📊 帮您生成财务报表</li><li>📈 分析财务数据和指标</li><li>💰 进行预算编制和成本控制</li><li>📝 整理会议记录</li><li>📋 制定安全培训方案</li></ul><p>请输入您的问题，我将为您提供专业的服务！</p></div></div>';
+        }
     </script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 </body>
 </html>
