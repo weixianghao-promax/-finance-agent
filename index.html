@@ -504,7 +504,7 @@
             }
         }
         
-        async function sendMessage() {
+        async function sendMessage(isQuickAction = false) {
             const text = userInput.value.trim();
             if (!text && !uploadedFileContent) return;
             addMessage(text, 'user');
@@ -530,7 +530,7 @@
             let fullResponse = '';
             
             try {
-                const body = await callDeepSeekAPI(text);
+                const body = await callDeepSeekAPI(text, isQuickAction);
                 const reader = body.getReader();
                 const decoder = new TextDecoder();
                 
@@ -598,7 +598,7 @@
             
             internship: `\n\n请按照以下实习方案格式输出：\n\n### 1. 实习生基本信息区\n姓名：XXX\n专业：XXX\n性格特点：XXX\n实习岗位：XXX\n实习周期：XXX\n\n### 2. 岗位匹配分析区\n性格特点分析：XXX\n推荐岗位：XXX\n匹配理由：XXX\n\n### 3. 培训计划区\n| 阶段 | 时间 | 培训内容 |\n| --- | --- | --- |\n| 第一阶段 | 第1-2周 | 公司概况、安全培训、岗位认知 |\n| 第二阶段 | 第3-4周 | 专业技能培训、导师带教 |\n| 第三阶段 | 第5-8周 | 独立工作实践、项目参与 |\n\n### 4. 考核标准区\n| 考核维度 | 权重 | 考核方式 |\n| --- | --- | --- |\n| 工作态度 | 30% | 日常表现、出勤情况 |\n| 专业技能 | 35% | 实操考核、技能测试 |\n| 团队协作 | 20% | 同事评价、团队项目表现 |\n| 综合能力 | 15% | 实习总结报告、答辩 |`,
             
-            safety: `\n\n请按照以下安全生产方案格式输出：\n\n### 1. 设备/岗位信息区\n设备类型：[吊机/叉车/铲车/装卸人员]\n风险等级：[高/中/低]\n适用范围：XXX\n\n### 2. 安全操作规程区\n| 操作步骤 | 安全要求 |\n| --- | --- |\n| 步骤1 | 安全要求1 |\n| 步骤2 | 安全要求2 |\n| 步骤3 | 安全要求3 |\n\n### 3. 安全风险与防控区\n| 风险类型 | 风险描述 | 防控措施 |\n| --- | --- | --- |\n| 风险1 | 风险描述1 | 防控措施1 |\n| 风险2 | 风险描述2 | 防控措施2 |\n\n### 4. 应急预案区\n| 应急事件 | 应急措施 | 责任人员 |\n| --- | --- | --- |\n| 事件1 | 措施1 | 责任人1 |\n| 事件2 | 措施2 | 责任人2 |`,
+            safety: `\n\n参考法规（知识截止日期：2024年）：\n- 《中华人民共和国港口法》\n- 《港口危险货物安全管理规定》\n- 《港口设施保安规则》\n- 《广东省港口条例》\n- 《广东省安全生产条例》\n- 《起重机械安全规程》(GB 6067.1)\n- 《场(厂)内专用机动车辆安全技术规程》(GB/T 10827)\n\n请按照以下安全生产方案格式输出：\n\n### 1. 设备/岗位信息区\n设备类型：[吊机/叉车/铲车/装卸人员]\n风险等级：[高/中/低]\n适用范围：XXX\n\n### 2. 安全操作规程区\n| 操作步骤 | 安全要求 |\n| --- | --- |\n| 步骤1 | 安全要求1 |\n| 步骤2 | 安全要求2 |\n| 步骤3 | 安全要求3 |\n\n### 3. 安全风险与防控区\n| 风险类型 | 风险描述 | 防控措施 |\n| --- | --- | --- |\n| 风险1 | 风险描述1 | 防控措施1 |\n| 风险2 | 风险描述2 | 防控措施2 |\n\n### 4. 应急预案区\n| 应急事件 | 应急措施 | 责任人员 |\n| --- | --- | --- |\n| 事件1 | 措施1 | 责任人1 |\n| 事件2 | 措施2 | 责任人2 |`,
             
             image_analysis: `\n\n请分析以下图片识别内容：\n1. 内容摘要：简要概括图片中的核心内容\n2. 分类标签：财务票据/安全文档/人事资料/合同协议/物流单据/行政通知/其他\n3. 关键信息提取：提取图片中的重要数据和信息\n4. 整理建议：针对该类型文档的整理建议\n\n请使用Markdown格式输出。`
         };
@@ -638,39 +638,8 @@
             return content.substring(0, half) + '\n...（内容已截断，保留核心信息）\n' + content.substring(content.length - half);
         }
         
-        async function callDeepSeekAPI(text) {
-            const SYSTEM_PROMPT = `你是一位专业的港口码头管理智能助手，具备丰富的港口运营管理经验和专业知识。
-
-## 我的能力
-
-### 1. 人事管理
-- **人事招收方案**：根据岗位需求生成完整的招聘方案，包含岗位分析、招聘流程、面试评估标准
-- **个性化实习方案**：根据实习生性格特点制定实习计划，包含岗位匹配、培训计划、考核标准
-
-### 2. 安全生产
-- **安全操作规程**：生成吊机、叉车、铲车、装卸人员等岗位的安全操作规范
-- **应急预案**：制定各类设备和岗位的应急预案和风险防控措施
-
-### 3. 财务管理
-- **财务报表生成**：生成各类财务报表、报销汇总表、成本分析表
-- **财务数据分析**：分析收入、支出、利润等财务数据，提供决策支持
-
-### 4. 文档处理
-- **文件内容整理**：整理上传的文档内容，提取关键信息
-- **图片文字识别**：识别图片中的文字内容，进行分类整理
-
-### 5. 综合咨询
-- 提供港口码头运营管理相关的专业建议和决策支持
-
-## 使用说明
-
-当用户请求生成方案时：
-1. **人事招收方案**：如果用户没有指定岗位名称，请先询问需要招聘的岗位
-2. **实习方案**：如果用户没有提供实习生信息（姓名、专业、性格特点），请先询问这些信息
-3. **安全方案**：如果用户没有指定设备类型（吊机/叉车/铲车/装卸人员），请先询问具体设备类型
-4. **财务报表**：如果用户没有提供数据或时间范围，请询问相关信息
-
-请使用自然、友好的语言与用户交流，在缺少必要信息时主动询问，然后生成结构化的方案。`;
+        async function callDeepSeekAPI(text, isQuickAction = false) {
+            const SYSTEM_PROMPT = '你是一位专业的港口码头管理智能助手，擅长人事管理、安全生产、财务管理和文档处理。请使用自然语言与用户交流，在缺少必要信息时主动询问，然后生成结构化的方案。';
             
             let userContent = text;
             const requestType = detectRequestType(text);
@@ -679,11 +648,11 @@
             }
             
             if (uploadedFileContent) {
-                const truncatedContent = truncateContent(uploadedFileContent, 3000);
+                const truncatedContent = truncateContent(uploadedFileContent, 2000);
                 userContent = `文件内容（${uploadedFileName}）：\n${truncatedContent}\n\n问题：${userContent}`;
             }
             
-            const recentHistory = chatHistory.slice(-5);
+            const recentHistory = chatHistory.slice(-3);
             const messages = [
                 { role: 'system', content: SYSTEM_PROMPT },
                 ...recentHistory.map(function(h) { 
@@ -695,10 +664,12 @@
                 { role: 'user', content: userContent }
             ];
             
+            const maxTokens = isQuickAction ? 4096 : 2048;
+            
             const response = await fetch(BASE_URL + '/v1/chat/completions', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + API_KEY },
-                body: JSON.stringify({ model: MODEL, messages: messages, temperature: 0.5, max_tokens: 2048, stream: true })
+                body: JSON.stringify({ model: MODEL, messages: messages, temperature: 0.5, max_tokens: maxTokens, stream: true })
             });
             
             if (!response.ok) {
@@ -858,28 +829,35 @@
             const financialHistory = getFinancialHistory();
             let historySummary = '';
             if (financialHistory.length > 0) {
-                historySummary = '【历史财务数据参考】\n';
+                historySummary = '【历史财务关键数据】\n';
                 financialHistory.forEach((item, index) => {
                     const date = new Date(item.timestamp || Date.now());
                     const dateStr = `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
-                    if (item.user) historySummary += `${dateStr} 用户: ${item.user.substring(0, 100)}\n`;
-                    if (item.assistant) historySummary += `${dateStr} 助手: ${item.assistant.substring(0, 200)}\n`;
+                    const text = ((item.user || '') + (item.assistant || ''));
+                    const numbers = text.match(/(\d+(?:,\d{3})*(?:\.\d{2})?)\s*(元|万元|亿|¥|￥)?/g) || [];
+                    const dates = text.match(/(\d{4}[-/]\d{1,2}[-/]\d{1,2})/g) || [];
+                    if (numbers.length > 0 || dates.length > 0) {
+                        historySummary += `${dateStr}: `;
+                        if (numbers.length > 0) historySummary += `金额: ${numbers.slice(0, 5).join(', ')} `;
+                        if (dates.length > 0) historySummary += `日期: ${dates.slice(0, 3).join(', ')}`;
+                        historySummary += '\n';
+                    }
                 });
             }
             
-            const prompt = `请基于以下信息为我生成一份年度财务支出报告：
+            const prompt = `请生成一份年度财务支出报告：
 
 ${historySummary}
 
-请完成以下任务：
-1. 整合一周内、一月内、一季度内的财务报告数据，生成一年内的财务支出报告
-2. 分析近年公司财务收入支出情况，包括收入趋势、支出结构、利润变化
-3. 结合未来市场发展情况，提出财务改进方案和建议
+任务：
+1. 整合周/月/季度财务数据，生成年度财务支出报告
+2. 分析收入趋势、支出结构、利润变化
+3. 结合未来市场发展提出改进方案
 
-请使用Markdown格式输出，包含表格和分析图表。`;
+请使用Markdown格式输出，包含表格。`;
             
             userInput.value = prompt;
-            await sendMessage();
+            await sendMessage(true);
         }
         
         async function generateSafetyImprovementPlan() {
@@ -890,38 +868,25 @@ ${historySummary}
                 safetyHistory.forEach((item, index) => {
                     const date = new Date(item.timestamp || Date.now());
                     const dateStr = `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
-                    if (item.user) historySummary += `${dateStr} 用户: ${item.user.substring(0, 100)}\n`;
-                    if (item.assistant) historySummary += `${dateStr} 助手: ${item.assistant.substring(0, 200)}\n`;
+                    const text = ((item.user || '') + (item.assistant || ''));
+                    const keyPoints = text.substring(0, 100);
+                    historySummary += `${dateStr}: ${keyPoints}\n`;
                 });
             }
             
-            const prompt = `请为我生成一份港口码头安全生产改进方案：
+            const prompt = `请生成港口码头安全生产改进方案：
 
 ${historySummary}
 
-参考法规（知识截止日期：2024年）：
-- 《中华人民共和国港口法》
-- 《港口危险货物安全管理规定》
-- 《港口设施保安规则》
-- 《广东省港口条例》
-- 《广东省安全生产条例》
-- 《起重机械安全规程》(GB 6067.1)
-- 《场(厂)内专用机动车辆安全技术规程》(GB/T 10827)
-
-请完成以下任务：
-1. 结合近年广东省和国内发布的港口码头安全生产相关条例
-2. 根据上述安全相关记录，分析当前存在的安全问题和改进需求
-3. 制定未来安全生产改进方案，包括：
-   - 设备安全管理（吊机、叉车、铲车）
-   - 人员安全培训（装卸人员、操作人员）
-   - 安全制度完善
-   - 应急预案优化
-   - 风险防控措施
+任务：
+1. 结合广东省和国内港口码头安全生产相关条例
+2. 分析当前安全问题和改进需求
+3. 制定改进方案：设备安全管理、人员培训、制度完善、应急预案、风险防控
 
 请使用Markdown格式输出，结构清晰。`;
             
             userInput.value = prompt;
-            await sendMessage();
+            await sendMessage(true);
         }
         
         function openHistoryModal() {
