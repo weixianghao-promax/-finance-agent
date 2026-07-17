@@ -513,12 +513,18 @@
                     });
                 }
                 
+                if (rowIndex > 0) {
+                    ws['!ref'] = XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: rowIndex - 1, c: 4 } });
+                }
+                
                 XLSX.utils.book_append_sheet(wb, ws, '财务单据');
                 
                 const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
                 const fileName = '财务单据_' + dateStr + '.xlsx';
                 
-                XLSX.writeFile(wb, fileName);
+                window.currentWorkbook = wb;
+                window.currentFileName = fileName;
+                
                 return fileName;
             } catch (e) {
                 console.error('Excel generation failed:', e);
@@ -543,15 +549,18 @@
         }
         
         function downloadExcel(fileName) {
-            const msg = messagesContainer.lastElementChild;
-            if (msg && msg.querySelector('.download-btn')) {
-                msg.querySelector('.download-btn').innerHTML = '📥 下载中...';
-            }
-            setTimeout(function() {
+            if (window.currentWorkbook && window.currentFileName) {
+                const msg = messagesContainer.lastElementChild;
                 if (msg && msg.querySelector('.download-btn')) {
-                    msg.querySelector('.download-btn').innerHTML = '📥 下载Excel表格';
+                    msg.querySelector('.download-btn').innerHTML = '📥 下载中...';
                 }
-            }, 1000);
+                XLSX.writeFile(window.currentWorkbook, window.currentFileName);
+                setTimeout(function() {
+                    if (msg && msg.querySelector('.download-btn')) {
+                        msg.querySelector('.download-btn').innerHTML = '📥 下载Excel表格';
+                    }
+                }, 1000);
+            }
         }
         
         function addTypingIndicator() {
