@@ -135,69 +135,89 @@
         const uploadBtn = document.getElementById('upload-btn');
         const fileInput = document.getElementById('file-input');
         
-        function generateRandomKey(prefix) {
-            const random = Math.random().toString(36).substring(2, 8).toUpperCase();
-            return prefix + random;
-        }
-        
         function escapeRegExp(str) {
             return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
         }
         
         function resetDesensitization() {
             desensitizationMapping = {};
+            phoneCounter = 0;
+            idCounter = 0;
+            acctCounter = 0;
+            amtCounter = 0;
+            compCounter = 0;
+            nameCounter = 0;
+            emailCounter = 0;
+            wechatCounter = 0;
         }
+        
+        let phoneCounter = 0;
+        let idCounter = 0;
+        let acctCounter = 0;
+        let amtCounter = 0;
+        let compCounter = 0;
+        let nameCounter = 0;
+        let emailCounter = 0;
+        let wechatCounter = 0;
         
         function desensitizeData(text) {
             text = text.replace(/1[3-9]\d{9}/g, function(match) {
-                const key = generateRandomKey('[PHONE_');
+                phoneCounter++;
+                const key = '[PHONE_' + phoneCounter + ']';
                 desensitizationMapping[key] = match;
-                return key + ']';
+                return key;
             });
             
             text = text.replace(/\d{17}[\dXx]/g, function(match) {
-                const key = generateRandomKey('[ID_');
+                idCounter++;
+                const key = '[ID_' + idCounter + ']';
                 desensitizationMapping[key] = match;
-                return key + ']';
+                return key;
             });
             
             text = text.replace(/\d{16,19}/g, function(match) {
                 if (!/^1[3-9]\d{9}$/.test(match)) {
-                    const key = generateRandomKey('[ACCT_');
+                    acctCounter++;
+                    const key = '[ACCT_' + acctCounter + ']';
                     desensitizationMapping[key] = match;
-                    return key + ']';
+                    return key;
                 }
                 return match;
             });
             
             text = text.replace(/(¥|￥)?(\d{1,3}(,\d{3})*(\.\d{2})?)\s*元/g, function(match, currency, amount) {
-                const key = generateRandomKey('[AMT_');
+                amtCounter++;
+                const key = '[AMT_' + amtCounter + ']';
                 desensitizationMapping[key] = match;
-                return key + ']';
+                return key;
             });
             
             text = text.replace(/([\u4e00-\u9fa5]{2,8})(集团|公司|有限公司|股份|控股|有限责任)/g, function(match) {
-                const key = generateRandomKey('[COMP_');
+                compCounter++;
+                const key = '[COMP_' + compCounter + ']';
                 desensitizationMapping[key] = match;
-                return key + ']';
+                return key;
             });
             
             text = text.replace(/\b([\u4e00-\u9fa5]{2,3})(先生|女士|经理|总)\b/g, function(match) {
-                const key = generateRandomKey('[NAME_');
+                nameCounter++;
+                const key = '[NAME_' + nameCounter + ']';
                 desensitizationMapping[key] = match;
-                return key + ']';
+                return key;
             });
             
             text = text.replace(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g, function(match) {
-                const key = generateRandomKey('[EMAIL_');
+                emailCounter++;
+                const key = '[EMAIL_' + emailCounter + ']';
                 desensitizationMapping[key] = match;
-                return key + ']';
+                return key;
             });
             
             text = text.replace(/(微信号|微信|WeChat|wechat)\s*[:：]?\s*([a-zA-Z0-9_-]{5,})/g, function(match) {
-                const key = generateRandomKey('[WECHAT_');
+                wechatCounter++;
+                const key = '[WECHAT_' + wechatCounter + ']';
                 desensitizationMapping[key] = match;
-                return key + ']';
+                return key;
             });
             
             return text;
@@ -206,9 +226,8 @@
         function restoreData(text) {
             try {
                 Object.keys(desensitizationMapping).forEach(function(key) {
-                    const placeholder = key + ']';
-                    const escapedPlaceholder = escapeRegExp(placeholder);
-                    text = text.replace(new RegExp(escapedPlaceholder, 'g'), desensitizationMapping[key]);
+                    const escapedKey = escapeRegExp(key);
+                    text = text.replace(new RegExp(escapedKey, 'g'), desensitizationMapping[key]);
                 });
             } catch (e) {
                 console.error('数据还原失败:', e);
