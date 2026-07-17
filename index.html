@@ -578,7 +578,7 @@
                                         desensitizationProxy.setMapping(currentMapping);
                                         displayContent = desensitizationProxy.restore(displayContent);
                                     }
-                                    streamContent.innerHTML = isDesensitizeEnabled ? marked.parse(displayContent) : displayDesensitize(marked.parse(displayContent));
+                                    streamContent.innerHTML = displayDesensitize(marked.parse(displayContent));
                                     messagesContainer.scrollTop = messagesContainer.scrollHeight;
                                 }
                             } catch (e) {
@@ -678,12 +678,12 @@
             const desensitizeToggle = document.getElementById('desensitize-toggle');
             const isDesensitizeEnabled = desensitizeToggle && desensitizeToggle.checked;
             
+            let currentMapping = null;
             if (isDesensitizeEnabled) {
                 userContent = desensitizationProxy.desensitize(userContent);
+                currentMapping = desensitizationProxy.getMapping();
                 systemPrompt += '\n\n重要：用户消息中包含如[PH1][ID1][AM1]等方括号占位符，请原样保留这些占位符，不要修改或替换它们。';
             }
-            
-            const currentMapping = isDesensitizeEnabled ? desensitizationProxy.getMapping() : null;
             
             if (uploadedFileContent) {
                 let truncatedContent = truncateContent(uploadedFileContent, 2000);
