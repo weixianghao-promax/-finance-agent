@@ -8,6 +8,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/11.1.1/marked.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/5.0.4/tesseract.min.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif; background: linear-gradient(135deg, #0c1445 0%, #1a237e 50%, #283593 100%); min-height: 100vh; display: flex; }
@@ -297,15 +298,20 @@
         }
         
         async function readImage(file) {
-            return new Promise(function(resolve, reject) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    const base64 = e.target.result;
-                    resolve(base64);
-                };
-                reader.onerror = reject;
-                reader.readAsDataURL(file);
-            });
+            try {
+                const { createWorker } = Tesseract;
+                const worker = await createWorker('chi_sim');
+                await worker.loadLanguage('chi_sim');
+                await worker.initialize('chi_sim');
+                
+                const { data: { text } } = await worker.recognize(file);
+                await worker.terminate();
+                
+                return '=== 图片识别结果: ' + file.name + ' ===\n' + text.trim();
+            } catch (e) {
+                console.error('图片识别失败:', e);
+                return '图片文件内容（识别失败）\n文件名: ' + file.name + '\n大小: ' + file.size + '字节\n提示：请手动描述图片内容，或复制图片中的文字重新上传。';
+            }
         }
         
         async function sendMessage() {
@@ -339,18 +345,10 @@
         async function callDeepSeekAPI(text) {
             let systemPrompt = '你是一位专业的码头港口财务智能顾问，具备丰富的财务管理经验和专业知识。\n\n## 核心职责\n1. **财务数据分析**：深入分析码头港口的收入、支出、利润等财务数据\n2. **报表生成**：生成各类财务报表，如分类汇总表、收支明细表、成本分析表\n3. **财务咨询**：提供专业的财务建议和决策支持\n4. **票据处理**：识别和处理各类财务票据信息\n5. **预算管理**：协助进行预算编制和成本控制\n\n## 业务领域知识\n- 港口码头主要收入来源：装卸费、堆存费、船舶代理费、拖轮费等\n- 主要成本项目：人工成本、设备维护、能源消耗、码头设施折旧等\n- 财务指标：吞吐量、装卸效率、单位成本、利润率等\n\n## 重要指导原则\n### 处理模糊/笼统语言\n当用户的问题较为笼统或模糊时（如"帮我整理一下"、"分析这份文件"、"给我一份表格"等），请根据以下步骤处理：\n1. **主动推断意图**：结合已上传的文件内容和上下文，推断用户的真实需求\n2. **默认行为**：如果用户没有明确说明具体需求，默认进行以下操作：\n   - 对上传的财务文件进行分类整理\n   - 生成收支分类汇总表\n   - 提供关键财务分析结论\n3. **不要拒绝回答**：无论用户的问题多么笼统，都要给出合理的回应，不要说"请提供更具体的需求"或"无法理解"\n\n### 输出格式要求（严格按照以下三种格式输出）\n\n#### 1. 纯文本报销汇总表格式（当用户询问报销汇总时使用）\n使用纯文本表格形式，便于复制粘贴，格式如下：\n费用类别 | 主要支出项目 | 金额（元） | 说明\n-------- | ----------- | ---------- | ----\n类别1 | 项目1 | 金额1 | 说明1\n类别2 | 项目2 | 金额2 | 说明2\n\n#### 2. Markdown格式（日常对话、数据分析、财务咨询时使用）\n- 使用Markdown语法进行格式化\n- 表格使用|分隔\n- 重点内容使用**加粗**\n- 列表使用-或*\n- 标题使用#\n\n#### 3. 文件格式（当用户提到飞书、企业微信等办公软件时使用）\n- 用户提到"飞书"、"企业微信"、"钉钉"、"邮件"等场景时，提示用户可以下载Excel/Word/PPT/PDF文件\n- 自动生成整理后的文件并提供下载链接\n- 根据原始文件类型生成对应格式：Excel→Excel、Word→Word、PPT→PPT、PDF→Word\n\n### 财务单据标准化输出结构（必须包含以下4个区域）\n\n#### 1. 单据基础信息区\n```\n单据编号：XXX\n单据日期：YYYY-MM-DD\n审批人：XXX\n归属部门：XXX\n填报人：XXX\n填报日期：YYYY-MM-DD\n```\n\n#### 2. 核心费用明细区\n```\n| 序号 | 费用事由 | 金额（元） | 支付方式 | 备注 |\n| --- | --- | --- | --- | --- |\n| 1 | 事由1 | 金额1 | 支付方式1 | 备注1 |\n| 2 | 事由2 | 金额2 | 支付方式2 | 备注2 |\n| ... | ... | ... | ... | ... |\n```\n\n#### 3. 合计汇总区\n```\n小写金额：￥XXX.XX元\n大写金额：XXX元整\n```\n\n#### 4. 异常备注区\n```\n异常类型：[单据残缺/识别错误/金额不全/其他]\n异常描述：XXX\n处理建议：XXX\n```\n\n**注意**：如果没有异常，异常备注区显示"无异常"。每次输出财务单据时，必须完整包含以上4个区域。\n\n## 图片识别功能\n当用户上传图片时（如发票、收据、报销单照片等），请识别图片中的财务信息：\n1. **文字识别**：提取图片中的所有文字内容\n2. **关键信息提取**：识别金额、日期、发票号码、单位名称等\n3. **结构化输出**：将识别结果整理成表格或结构化数据\n4. **异常处理**：如果图片模糊或信息不完整，在异常备注区说明\n\n## 注意事项\n- 保护用户的财务数据安全\n- 对于不确定的信息，明确告知用户\n- 保持回答的准确性和可靠性';
             
-            let userContent;
-            const isImage = uploadedFileName && ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'].includes(uploadedFileName.split('.').pop().toLowerCase());
-            
-            if (isImage && uploadedFileContent) {
-                systemPrompt += '\n\n用户上传了一张图片文件（文件名：' + uploadedFileName + '），请根据用户的描述进行分析。由于当前模型不支持图片识别，用户需要手动描述图片内容。';
-                userContent = text || '请描述您上传的图片内容，我会根据您的描述进行分析。';
-            } else if (uploadedFileContent) {
+            if (uploadedFileContent) {
                 systemPrompt += '\n\n用户上传的文件内容如下（文件名：' + uploadedFileName + '）：\n' + uploadedFileContent;
-                userContent = text;
-            } else {
-                userContent = text;
             }
+            const userContent = text;
             
             const messages = [
                 { role: 'system', content: systemPrompt },
