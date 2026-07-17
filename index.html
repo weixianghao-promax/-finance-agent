@@ -368,128 +368,31 @@
                 const ws = XLSX.utils.aoa_to_sheet([]);
                 let rowIndex = 0;
                 
-                const addTitle = function(title) {
-                    ws[XLSX.utils.encode_cell({ r: rowIndex, c: 0 })] = { t: 's', v: title };
-                    ws['!merges'] = ws['!merges'] || [];
-                    ws['!merges'].push({ s: { r: rowIndex, c: 0 }, e: { r: rowIndex, c: 4 } });
-                    rowIndex++;
-                };
+                const lines = content.split('\n');
+                const tables = [];
+                let currentTable = [];
+                let inTable = false;
                 
-                const addInfoRow = function(label, value) {
-                    ws[XLSX.utils.encode_cell({ r: rowIndex, c: 0 })] = { t: 's', v: label };
-                    ws[XLSX.utils.encode_cell({ r: rowIndex, c: 1 })] = { t: 's', v: value };
-                    ws['!merges'] = ws['!merges'] || [];
-                    ws['!merges'].push({ s: { r: rowIndex, c: 1 }, e: { r: rowIndex, c: 4 } });
-                    rowIndex++;
-                };
-                
-                const addTableHeader = function(headers) {
-                    headers.forEach(function(header, colIndex) {
-                        ws[XLSX.utils.encode_cell({ r: rowIndex, c: colIndex })] = { t: 's', v: header };
-                    });
-                    rowIndex++;
-                };
-                
-                const addTableRow = function(values) {
-                    values.forEach(function(value, colIndex) {
-                        ws[XLSX.utils.encode_cell({ r: rowIndex, c: colIndex })] = { t: 's', v: value };
-                    });
-                    rowIndex++;
-                };
-                
-                const addEmptyRow = function() { rowIndex++; };
-                
-                const basicInfoMatch = content.match(/单据基础信息区[\s\S]*?```([\s\S]*?)```/);
-                if (basicInfoMatch) {
-                    addTitle('一、单据基础信息');
-                    const infoLines = basicInfoMatch[1].trim().split('\n');
-                    infoLines.forEach(function(line) {
-                        const parts = line.split('：');
-                        if (parts.length === 2) {
-                            addInfoRow(parts[0].trim(), parts[1].trim());
+                lines.forEach(function(line) {
+                    const trimmed = line.trim();
+                    if (trimmed.includes('|')) {
+                        inTable = true;
+                        const cells = trimmed.split('|').map(function(c) { return c.trim().replace(/^\*\*|\*\*$/g, ''); }).filter(function(c) { return c && !/^[.\-]+$/.test(c); });
+                        if (cells.length > 0) {
+                            currentTable.push(cells);
                         }
-                    });
-                    addEmptyRow();
-                }
-                
-                const expenseMatch = content.match(/核心费用明细区[\s\S]*?```([\s\S]*?)```/);
-                if (expenseMatch) {
-                    addTitle('二、核心费用明细');
-                    const expenseLines = expenseMatch[1].trim().split('\n').filter(function(l) { return l.trim(); });
-                    expenseLines.forEach(function(line) {
-                        if (line.startsWith('|')) {
-                            const cells = line.split('|').map(function(c) { return c.trim(); }).filter(function(c) { return c && c !== '---'; });
-                            if (cells.length > 0) {
-                                if (cells.includes('序号') || cells.includes('费用事由')) {
-                                    addTableHeader(cells);
-                                } else {
-                                    addTableRow(cells);
-                                }
-                            }
-                        }
-                    });
-                    addEmptyRow();
-                }
-                
-                const summaryMatch = content.match(/合计汇总区[\s\S]*?```([\s\S]*?)```/);
-                if (summaryMatch) {
-                    addTitle('三、合计汇总');
-                    const summaryLines = summaryMatch[1].trim().split('\n');
-                    summaryLines.forEach(function(line) {
-                        const parts = line.split('：');
-                        if (parts.length === 2) {
-                            addInfoRow(parts[0].trim(), parts[1].trim());
-                        }
-                    });
-                    addEmptyRow();
-                }
-                
-                const exceptionMatch = content.match(/异常备注区[\s\S]*?```([\s\S]*?)```/);
-                if (exceptionMatch) {
-                    addTitle('四、异常备注');
-                    const exceptionLines = exceptionMatch[1].trim().split('\n');
-                    let hasException = false;
-                    exceptionLines.forEach(function(line) {
-                        const parts = line.split('：');
-                        if (parts.length === 2) {
-                            const label = parts[0].trim();
-                            const value = parts[1].trim();
-                            if (value && value !== '无异常') {
-                                hasException = true;
-                            }
-                            addInfoRow(label, value);
-                        }
-                    });
-                    if (!hasException && !exceptionLines.includes('无异常')) {
-                        addInfoRow('异常状态', '无异常');
-                    }
-                }
-                
-                if (rowIndex === 0) {
-                    const lines = content.split('\n');
-                    const tables = [];
-                    let currentTable = [];
-                    let inTable = false;
-                    
-                    lines.forEach(function(line) {
-                        const trimmed = line.trim();
-                        if (trimmed.startsWith('|') && trimmed.endsWith('|')) {
-                            inTable = true;
-                            const cells = trimmed.split('|').map(function(c) { return c.trim(); }).filter(function(c) { return c && c !== '---'; });
-                            if (cells.length > 0) {
-                                currentTable.push(cells);
-                            }
-                        } else if (inTable && currentTable.length > 0) {
-                            tables.push(currentTable);
-                            currentTable = [];
-                            inTable = false;
-                        }
-                    });
-                    
-                    if (currentTable.length > 0) {
+                    } else if (inTable && currentTable.length > 0) {
                         tables.push(currentTable);
+                        currentTable = [];
+                        inTable = false;
                     }
-                    
+                });
+                
+                if (currentTable.length > 0) {
+                    tables.push(currentTable);
+                }
+                
+                if (tables.length > 0) {
                     tables.forEach(function(table) {
                         table.forEach(function(row, ri) {
                             row.forEach(function(cell, ci) {
@@ -498,15 +401,17 @@
                         });
                         rowIndex += table.length + 1;
                     });
-                }
-                
-                if (rowIndex === 0) {
-                    addTitle('AI回复内容');
-                    const lines = content.split('\n');
-                    lines.forEach(function(line) {
+                } else {
+                    const cleanContent = content.replace(/^\*\*|\*\*$/gm, '').replace(/^###\s*/gm, '');
+                    const cleanLines = cleanContent.split('\n');
+                    ws[XLSX.utils.encode_cell({ r: rowIndex, c: 0 })] = { t: 's', v: 'AI回复内容' };
+                    ws['!merges'] = ws['!merges'] || [];
+                    ws['!merges'].push({ s: { r: rowIndex, c: 0 }, e: { r: rowIndex, c: 4 } });
+                    rowIndex++;
+                    
+                    cleanLines.forEach(function(line) {
                         if (line.trim()) {
                             ws[XLSX.utils.encode_cell({ r: rowIndex, c: 0 })] = { t: 's', v: line.trim() };
-                            ws['!merges'] = ws['!merges'] || [];
                             ws['!merges'].push({ s: { r: rowIndex, c: 0 }, e: { r: rowIndex, c: 4 } });
                             rowIndex++;
                         }
@@ -514,7 +419,7 @@
                 }
                 
                 if (rowIndex > 0) {
-                    ws['!ref'] = XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: rowIndex - 1, c: 4 } });
+                    ws['!ref'] = XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: rowIndex - 1, c: 10 } });
                 }
                 
                 XLSX.utils.book_append_sheet(wb, ws, '财务单据');
