@@ -305,7 +305,14 @@
             try {
                 const response = await callDeepSeekAPI(text);
                 removeTypingIndicator(typingIndicator);
-                const downloadFileName = generateExcelFile(response);
+                const hasTableOrFinance = response.includes('|') || 
+                                          response.includes('序号') || 
+                                          response.includes('金额') || 
+                                          response.includes('费用') ||
+                                          response.includes('单据基础信息') ||
+                                          response.includes('核心费用明细') ||
+                                          response.includes('合计汇总');
+                const downloadFileName = hasTableOrFinance ? generateExcelFile(response) : null;
                 addMessage(response, 'assistant', downloadFileName);
             } catch (error) {
                 removeTypingIndicator(typingIndicator);
@@ -490,6 +497,19 @@
                             });
                         });
                         rowIndex += table.length + 1;
+                    });
+                }
+                
+                if (rowIndex === 0) {
+                    addTitle('AI回复内容');
+                    const lines = content.split('\n');
+                    lines.forEach(function(line) {
+                        if (line.trim()) {
+                            ws[XLSX.utils.encode_cell({ r: rowIndex, c: 0 })] = { t: 's', v: line.trim() };
+                            ws['!merges'] = ws['!merges'] || [];
+                            ws['!merges'].push({ s: { r: rowIndex, c: 0 }, e: { r: rowIndex, c: 4 } });
+                            rowIndex++;
+                        }
                     });
                 }
                 
