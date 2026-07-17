@@ -312,6 +312,42 @@
 - 自动生成整理后的文件并提供下载链接
 - 根据原始文件类型生成对应格式：Excel→Excel、Word→Word、PPT→PPT、PDF→Word
 
+### 财务单据标准化输出结构（必须包含以下4个区域）
+
+#### 1. 单据基础信息区
+```
+单据编号：XXX
+单据日期：YYYY-MM-DD
+审批人：XXX
+归属部门：XXX
+填报人：XXX
+填报日期：YYYY-MM-DD
+```
+
+#### 2. 核心费用明细区
+```
+| 序号 | 费用事由 | 金额（元） | 支付方式 | 备注 |
+| --- | --- | --- | --- | --- |
+| 1 | 事由1 | 金额1 | 支付方式1 | 备注1 |
+| 2 | 事由2 | 金额2 | 支付方式2 | 备注2 |
+| ... | ... | ... | ... | ... |
+```
+
+#### 3. 合计汇总区
+```
+小写金额：￥XXX.XX元
+大写金额：XXX元整
+```
+
+#### 4. 异常备注区
+```
+异常类型：[单据残缺/识别错误/金额不全/其他]
+异常描述：XXX
+处理建议：XXX
+```
+
+**注意**：如果没有异常，异常备注区显示"无异常"。每次输出财务单据时，必须完整包含以上4个区域。
+
 ## 注意事项
 - 保护用户的财务数据安全
 - 对于不确定的信息，明确告知用户
@@ -350,49 +386,149 @@
         
         function generateExcelFile(content) {
             try {
-                const lines = content.split('\n');
-                const tables = [];
-                let currentTable = [];
-                let inTable = false;
-                
-                lines.forEach(line => {
-                    const trimmed = line.trim();
-                    if (trimmed.startsWith('|') && trimmed.endsWith('|')) {
-                        inTable = true;
-                        const cells = trimmed.split('|').map(c => c.trim()).filter(c => c && c !== '---');
-                        if (cells.length > 0) {
-                            currentTable.push(cells);
-                        }
-                    } else if (inTable && currentTable.length > 0) {
-                        tables.push(currentTable);
-                        currentTable = [];
-                        inTable = false;
-                    }
-                });
-                
-                if (currentTable.length > 0) {
-                    tables.push(currentTable);
-                }
-                
-                if (tables.length === 0) {
-                    const rows = content.split('\n').map(line => line.split('\t'));
-                    if (rows.length > 1) {
-                        tables.push(rows);
-                    } else {
-                        return null;
-                    }
-                }
-                
                 const wb = XLSX.utils.book_new();
+                const ws = XLSX.utils.aoa_to_sheet([]);
                 
-                tables.forEach((table, index) => {
-                    const ws = XLSX.utils.aoa_to_sheet(table);
-                    const sheetName = `整理表格${index + 1}`;
-                    XLSX.utils.book_append_sheet(wb, ws, sheetName);
-                });
+                let rowIndex = 0;
+                
+                const addTitle = (title) => {
+                    ws[XLSX.utils.encode_cell({ r: rowIndex, c: 0 })] = { t: 's', v: title };
+                    ws['!merges'] = ws['!merges'] || [];
+                    ws['!merges'].push({ s: { r: rowIndex, c: 0 }, e: { r: rowIndex, c: 4 } });
+                    rowIndex++;
+                };
+                
+                const addInfoRow = (label, value) => {
+                    ws[XLSX.utils.encode_cell({ r: rowIndex, c: 0 })] = { t: 's', v: label };
+                    ws[XLSX.utils.encode_cell({ r: rowIndex, c: 1 })] = { t: 's', v: value };
+                    ws['!merges'] = ws['!merges'] || [];
+                    ws['!merges'].push({ s: { r: rowIndex, c: 1 }, e: { r: rowIndex, c: 4 } });
+                    rowIndex++;
+                };
+                
+                const addTableHeader = (headers) => {
+                    headers.forEach((header, colIndex) => {
+                        ws[XLSX.utils.encode_cell({ r: rowIndex, c: colIndex })] = { t: 's', v: header };
+                    });
+                    rowIndex++;
+                };
+                
+                const addTableRow = (values) => {
+                    values.forEach((value, colIndex) => {
+                        ws[XLSX.utils.encode_cell({ r: rowIndex, c: colIndex })] = { t: 's', v: value };
+                    });
+                    rowIndex++;
+                };
+                
+                const addEmptyRow = () => {
+                    rowIndex++;
+                };
+                
+                const basicInfoMatch = content.match(/单据基础信息区[\s\S]*?```([\s\S]*?)```/);
+                if (basicInfoMatch) {
+                    addTitle('一、单据基础信息');
+                    const infoLines = basicInfoMatch[1].trim().split('\n');
+                    infoLines.forEach(line => {
+                        const parts = line.split('：');
+                        if (parts.length === 2) {
+                            addInfoRow(parts[0].trim(), parts[1].trim());
+                        }
+                    });
+                    addEmptyRow();
+                }
+                
+                const expenseMatch = content.match(/核心费用明细区[\s\S]*?```([\s\S]*?)```/);
+                if (expenseMatch) {
+                    addTitle('二、核心费用明细');
+                    const expenseLines = expenseMatch[1].trim().split('\n').filter(l => l.trim());
+                    expenseLines.forEach(line => {
+                        if (line.startsWith('|')) {
+                            const cells = line.split('|').map(c => c.trim()).filter(c => c && c !== '---');
+                            if (cells.length > 0) {
+                                if (cells.includes('序号') || cells.includes('费用事由')) {
+                                    addTableHeader(cells);
+                                } else {
+                                    addTableRow(cells);
+                                }
+                            }
+                        }
+                    });
+                    addEmptyRow();
+                }
+                
+                const summaryMatch = content.match(/合计汇总区[\s\S]*?```([\s\S]*?)```/);
+                if (summaryMatch) {
+                    addTitle('三、合计汇总');
+                    const summaryLines = summaryMatch[1].trim().split('\n');
+                    summaryLines.forEach(line => {
+                        const parts = line.split('：');
+                        if (parts.length === 2) {
+                            addInfoRow(parts[0].trim(), parts[1].trim());
+                        }
+                    });
+                    addEmptyRow();
+                }
+                
+                const exceptionMatch = content.match(/异常备注区[\s\S]*?```([\s\S]*?)```/);
+                if (exceptionMatch) {
+                    addTitle('四、异常备注');
+                    const exceptionLines = exceptionMatch[1].trim().split('\n');
+                    let hasException = false;
+                    exceptionLines.forEach(line => {
+                        const parts = line.split('：');
+                        if (parts.length === 2) {
+                            const label = parts[0].trim();
+                            const value = parts[1].trim();
+                            if (value && value !== '无异常') {
+                                hasException = true;
+                            }
+                            addInfoRow(label, value);
+                        }
+                    });
+                    if (!hasException && !exceptionLines.includes('无异常')) {
+                        addInfoRow('异常状态', '无异常');
+                    }
+                }
+                
+                if (rowIndex === 0) {
+                    const lines = content.split('\n');
+                    const tables = [];
+                    let currentTable = [];
+                    let inTable = false;
+                    
+                    lines.forEach(line => {
+                        const trimmed = line.trim();
+                        if (trimmed.startsWith('|') && trimmed.endsWith('|')) {
+                            inTable = true;
+                            const cells = trimmed.split('|').map(c => c.trim()).filter(c => c && c !== '---');
+                            if (cells.length > 0) {
+                                currentTable.push(cells);
+                            }
+                        } else if (inTable && currentTable.length > 0) {
+                            tables.push(currentTable);
+                            currentTable = [];
+                            inTable = false;
+                        }
+                    });
+                    
+                    if (currentTable.length > 0) {
+                        tables.push(currentTable);
+                    }
+                    
+                    tables.forEach(table => {
+                        table.forEach((row, ri) => {
+                            row.forEach((cell, ci) => {
+                                ws[XLSX.utils.encode_cell({ r: rowIndex + ri, c: ci })] = { t: 's', v: cell };
+                            });
+                        });
+                        rowIndex += table.length + 1;
+                    });
+                }
+                
+                XLSX.utils.book_append_sheet(wb, ws, '财务单据');
                 
                 const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-                const fileName = `整理报告_${dateStr}.xlsx`;
+                const fileName = `财务单据_${dateStr}.xlsx`;
                 
                 XLSX.writeFile(wb, fileName);
                 
