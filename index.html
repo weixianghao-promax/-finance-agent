@@ -140,6 +140,10 @@
             return prefix + random;
         }
         
+        function escapeRegExp(str) {
+            return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        }
+        
         function desensitizeData(text) {
             desensitizationMapping = {};
             
@@ -164,25 +168,22 @@
                 return match;
             });
             
-            text = text.replace(/(\d{1,3}(,\d{3})*(\.\d{2})?)元?/g, function(match) {
+            text = text.replace(/(¥|￥)?(\d{1,3}(,\d{3})*(\.\d{2})?)\s*元/g, function(match, currency, amount) {
                 const key = generateRandomKey('[AMT_');
                 desensitizationMapping[key] = match;
                 return key + ']';
             });
             
-            text = text.replace(/([\u4e00-\u9fa5]{2,8})(集团|公司|有限公司|股份|控股)/g, function(match) {
+            text = text.replace(/([\u4e00-\u9fa5]{2,8})(集团|公司|有限公司|股份|控股|有限责任)/g, function(match) {
                 const key = generateRandomKey('[COMP_');
                 desensitizationMapping[key] = match;
                 return key + ']';
             });
             
-            text = text.replace(/([\u4e00-\u9fa5]{2,3})(先生|女士|经理|总)?/g, function(match) {
-                if (!match.includes('公司') && !match.includes('集团') && !match.includes('有限')) {
-                    const key = generateRandomKey('[NAME_');
-                    desensitizationMapping[key] = match;
-                    return key + ']';
-                }
-                return match;
+            text = text.replace(/\b([\u4e00-\u9fa5]{2,3})(先生|女士|经理|总)\b/g, function(match) {
+                const key = generateRandomKey('[NAME_');
+                desensitizationMapping[key] = match;
+                return key + ']';
             });
             
             text = text.replace(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g, function(match) {
@@ -204,7 +205,8 @@
             try {
                 Object.keys(desensitizationMapping).forEach(function(key) {
                     const placeholder = key + ']';
-                    text = text.replace(new RegExp(placeholder, 'g'), desensitizationMapping[key]);
+                    const escapedPlaceholder = escapeRegExp(placeholder);
+                    text = text.replace(new RegExp(escapedPlaceholder, 'g'), desensitizationMapping[key]);
                 });
             } catch (e) {
                 console.error('数据还原失败:', e);
@@ -225,7 +227,8 @@
                 const content = await readFileContent(file);
                 uploadedFileContent = content;
                 uploadedFileName = file.name;
-                addMessage('✅ 文件上传成功：' + file.name + '（' + file.size + '字节）\n文件内容已解析，您可以提问了。', 'assistant');
+                const previewContent = content.length > 500 ? content.substring(0, 500) + '...（内容已截断，完整内容已发送给AI）' : content;
+                addMessage('✅ 文件上传成功：' + file.name + '（' + file.size + '字节）\n\n文件内容预览：\n```\n' + previewContent + '\n```\n\n您可以提问了。', 'assistant');
             } catch (error) {
                 addMessage('❌ 文件上传失败：' + error.message + '\n请尝试将文件内容复制为文本后重新上传。', 'assistant');
             } finally {
@@ -548,6 +551,14 @@
             }
         }
         
+        function escapeMarkdownLinks(text) {
+            return text.replace(/\[([A-Z_]+_[A-Z0-9]+)\]/g, '[[$1]]');
+        }
+        
+        function restoreMarkdownLinks(text) {
+            return text.replace(/\[\[([A-Z_]+_[A-Z0-9]+)\]\]/g, '[$1]');
+        }
+        
         function addMessage(text, role, downloadFileName) {
             const messageDiv = document.createElement('div');
             messageDiv.className = 'message ' + role;
@@ -558,7 +569,14 @@
                 downloadSection = '<div class="download-section"><a href="#" onclick="downloadExcel(\'' + downloadFileName + '\')" class="download-btn">📥 下载Excel表格</a></div>';
             }
             
-            const formattedText = role === 'assistant' ? marked.parse(text) : text.replace(/\n/g, '<br>');
+            let formattedText;
+            if (role === 'assistant') {
+                const escapedText = escapeMarkdownLinks(text);
+                const parsedText = marked.parse(escapedText);
+                formattedText = restoreMarkdownLinks(parsedText);
+            } else {
+                formattedText = text.replace(/\n/g, '<br>');
+            }
             messageDiv.innerHTML = '<div class="avatar">' + avatar + '</div><div class="message-content">' + formattedText + downloadSection + '</div>';
             messagesContainer.appendChild(messageDiv);
             messagesContainer.scrollTop = messagesContainer.scrollHeight;
