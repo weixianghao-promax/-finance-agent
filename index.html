@@ -90,7 +90,7 @@
     </div>
     
     <div class="main-content">
-        <div class="privacy-banner">🔒 数据安全保障：您的文件和消息在发送给AI前已自动脱敏，敏感信息（手机号、身份证、金额、公司名称等）被替换为随机占位符，AI无法接触原始数据。回复后自动还原为真实数据显示给您。</div>
+        <div class="privacy-banner">🔒 数据安全保障：您的文件和消息中的敏感信息（手机号、身份证、金额、公司名称等）在展示时已自动脱敏处理，保护您的数据安全。</div>
         <div class="header">
             <h1>🚢 港口码头管理方案生成助手</h1>
             <div class="model-info">接入 DeepSeek 大模型</div>
@@ -541,14 +541,6 @@
             }
         }
         
-        function escapeMarkdownLinks(text) {
-            return text.replace(/\[([A-Z_]+_[A-Z0-9]+)\]/g, '[[$1]]');
-        }
-        
-        function restoreMarkdownLinks(text) {
-            return text.replace(/\[\[([A-Z_]+_[A-Z0-9]+)\]\]/g, '[$1]');
-        }
-        
         function addMessage(text, role, downloadFileName) {
             const messageDiv = document.createElement('div');
             messageDiv.className = 'message ' + role;
@@ -561,10 +553,8 @@
             
             let formattedText;
             if (role === 'assistant') {
-                const escapedText = escapeMarkdownLinks(text);
-                const parsedText = marked.parse(escapedText);
-                const restoredText = restoreMarkdownLinks(parsedText);
-                formattedText = displayDesensitize(restoredText);
+                const parsedText = marked.parse(text);
+                formattedText = displayDesensitize(parsedText);
             } else {
                 formattedText = displayDesensitize(text).replace(/\n/g, '<br>');
             }
