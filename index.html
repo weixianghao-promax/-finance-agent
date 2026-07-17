@@ -11,8 +11,17 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/5.0.4/tesseract.min.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif; background: linear-gradient(135deg, #0c1445 0%, #1a237e 50%, #283593 100%); min-height: 100vh; }
-        .main-content { display: flex; flex-direction: column; min-height: 100vh; }
+        body { font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif; background: linear-gradient(135deg, #0c1445 0%, #1a237e 50%, #283593 100%); min-height: 100vh; display: flex; }
+        .sidebar { width: 220px; background: rgba(0,0,0,0.3); backdrop-filter: blur(10px); padding: 20px; color: white; border-right: 1px solid rgba(255,255,255,0.1); display: flex; flex-direction: column; }
+        .sidebar h3 { font-size: 16px; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid rgba(255,255,255,0.2); }
+        .sidebar .quick-btn { padding: 14px 16px; margin-bottom: 10px; border-radius: 10px; cursor: pointer; transition: all 0.3s ease; display: flex; align-items: center; gap: 10px; font-size: 14px; border: none; color: white; }
+        .sidebar .quick-btn.financial { background: linear-gradient(135deg, #42a5f5, #1e88e5); }
+        .sidebar .quick-btn.financial:hover { background: linear-gradient(135deg, #1e88e5, #1565c0); transform: translateX(5px); }
+        .sidebar .quick-btn.safety { background: linear-gradient(135deg, #66bb6a, #43a047); }
+        .sidebar .quick-btn.safety:hover { background: linear-gradient(135deg, #43a047, #2e7d32); transform: translateX(5px); }
+        .sidebar .quick-btn.history { background: linear-gradient(135deg, #ffa726, #fb8c00); }
+        .sidebar .quick-btn.history:hover { background: linear-gradient(135deg, #fb8c00, #f57c00); transform: translateX(5px); }
+        .main-content { flex: 1; display: flex; flex-direction: column; min-height: 100vh; }
         .header { padding: 20px 30px; background: rgba(0,0,0,0.2); backdrop-filter: blur(10px); color: white; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1); }
         .header h1 { font-size: 22px; font-weight: 600; }
         .header .model-info { font-size: 14px; color: rgba(255,255,255,0.7); }
@@ -55,10 +64,35 @@
         th { background: rgba(255,255,255,0.1); }
         .privacy-banner { background: linear-gradient(135deg, #1e88e5, #42a5f5); padding: 12px 20px; color: white; font-size: 14px; text-align: center; }
         .privacy-banner::before { content: '🔒 '; }
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(5px); z-index: 1000; justify-content: center; align-items: center; }
+        .modal-overlay.active { display: flex; }
+        .modal { background: linear-gradient(135deg, #1a237e, #283593); border-radius: 16px; padding: 25px; width: 90%; max-width: 800px; max-height: 80vh; overflow: hidden; display: flex; flex-direction: column; border: 1px solid rgba(255,255,255,0.2); }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid rgba(255,255,255,0.2); }
+        .modal-header h2 { color: white; font-size: 18px; }
+        .modal-close { background: rgba(255,255,255,0.1); border: none; color: white; width: 32px; height: 32px; border-radius: 50%; cursor: pointer; font-size: 20px; display: flex; align-items: center; justify-content: center; }
+        .modal-close:hover { background: rgba(255,255,255,0.2); }
+        .modal-search { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; padding: 10px 15px; margin-bottom: 15px; }
+        .modal-search input { background: transparent; border: none; color: white; width: 100%; outline: none; font-size: 14px; }
+        .modal-search input::placeholder { color: rgba(255,255,255,0.5); }
+        .modal-content { flex: 1; overflow-y: auto; }
+        .history-item { padding: 15px; background: rgba(255,255,255,0.05); border-radius: 10px; margin-bottom: 10px; }
+        .history-item .role { font-size: 12px; color: rgba(255,255,255,0.6); margin-bottom: 5px; }
+        .history-item .content { color: white; font-size: 14px; line-height: 1.5; }
+        .history-item .content.highlight { background: rgba(255,255,0,0.3); padding: 2px 4px; border-radius: 3px; }
+        .history-item .time { font-size: 12px; color: rgba(255,255,255,0.4); margin-top: 8px; }
+        .category-tabs { display: flex; gap: 8px; margin-bottom: 15px; flex-wrap: wrap; }
+        .category-tab { padding: 6px 14px; border-radius: 20px; font-size: 12px; cursor: pointer; border: 1px solid rgba(255,255,255,0.3); color: rgba(255,255,255,0.8); background: transparent; transition: all 0.3s ease; }
+        .category-tab.active { background: rgba(255,255,255,0.2); border-color: rgba(255,255,255,0.5); color: white; }
+        .no-results { text-align: center; color: rgba(255,255,255,0.5); padding: 40px; }
     </style>
 </head>
 <body>
-    
+    <div class="sidebar">
+        <h3>⚡ 快捷功能</h3>
+        <button class="quick-btn financial" onclick="generateAnnualFinancialReport()">📊 年度财务整合</button>
+        <button class="quick-btn safety" onclick="generateSafetyImprovementPlan()">🛡️ 安全生产方案</button>
+        <button class="quick-btn history" onclick="openHistoryModal()">📋 聊天记录</button>
+    </div>
     
     <div class="main-content">
         <div class="privacy-banner">🔒 数据安全保障：您的文件和消息中的敏感信息（手机号、身份证、金额、公司名称等）在展示时已自动脱敏处理，保护您的数据安全。</div>
@@ -97,17 +131,90 @@
         </div>
     </div>
     
+    <div class="modal-overlay" id="history-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2>📋 聊天记录</h2>
+                <button class="modal-close" onclick="closeHistoryModal()">×</button>
+            </div>
+            <div class="category-tabs">
+                <button class="category-tab active" onclick="filterHistory('all')">全部</button>
+                <button class="category-tab" onclick="filterHistory('financial')">财务相关</button>
+                <button class="category-tab" onclick="filterHistory('safety')">安全相关</button>
+                <button class="category-tab" onclick="filterHistory('hr')">人事相关</button>
+                <button class="category-tab" onclick="filterHistory('other')">其他</button>
+            </div>
+            <div class="modal-search">
+                <input type="text" id="history-search" placeholder="搜索关键字..." oninput="searchHistory()">
+            </div>
+            <div class="modal-content" id="history-content">
+            </div>
+        </div>
+    </div>
+    
     <script>
         const API_KEY = 'sk-2f585db300124e90ada1f8f5980df367';
         const BASE_URL = 'https://api.deepseek.com';
         const MODEL = 'deepseek-chat';
-        let chatHistory = [];
+        let chatHistory = loadChatHistory();
         let uploadedFileContent = null;
         let uploadedFileName = null;
         let desensitizationMapping = {};
         const messagesContainer = document.getElementById('chat-messages');
         const userInput = document.getElementById('user-input');
         const sendBtn = document.getElementById('send-btn');
+        let currentFilter = 'all';
+        let currentSearch = '';
+        
+        function loadChatHistory() {
+            try {
+                const stored = localStorage.getItem('port_chat_history');
+                if (stored) {
+                    const parsed = JSON.parse(stored);
+                    return parsed.slice(-50);
+                }
+            } catch (e) {
+                console.error('加载聊天记录失败:', e);
+            }
+            return [];
+        }
+        
+        function saveChatHistory() {
+            try {
+                const toSave = chatHistory.slice(-50);
+                localStorage.setItem('port_chat_history', JSON.stringify(toSave));
+            } catch (e) {
+                console.error('保存聊天记录失败:', e);
+            }
+        }
+        
+        function getFinancialHistory() {
+            const keywords = ['财务', '报表', '报销', '金额', '费用', '预算', '成本', '收入', '支出', '利润', '数据'];
+            return chatHistory.filter(item => {
+                const text = (item.user || item.assistant || '').toLowerCase();
+                return keywords.some(k => text.includes(k.toLowerCase()));
+            });
+        }
+        
+        function getSafetyHistory() {
+            const keywords = ['安全', '吊机', '叉车', '铲车', '装卸', '操作', '应急', '风险', '事故'];
+            return chatHistory.filter(item => {
+                const text = (item.user || item.assistant || '').toLowerCase();
+                return keywords.some(k => text.includes(k.toLowerCase()));
+            });
+        }
+        
+        function categorizeMessage(text) {
+            const financialKeywords = ['财务', '报表', '报销', '金额', '费用', '预算', '成本', '收入', '支出', '利润'];
+            const safetyKeywords = ['安全', '吊机', '叉车', '铲车', '装卸', '操作', '应急', '风险'];
+            const hrKeywords = ['人事', '招聘', '实习', '入职', '面试', '员工'];
+            
+            text = text.toLowerCase();
+            if (financialKeywords.some(k => text.includes(k.toLowerCase()))) return 'financial';
+            if (safetyKeywords.some(k => text.includes(k.toLowerCase()))) return 'safety';
+            if (hrKeywords.some(k => text.includes(k.toLowerCase()))) return 'hr';
+            return 'other';
+        }
         const uploadBtn = document.getElementById('upload-btn');
         const fileInput = document.getElementById('file-input');
         
@@ -453,7 +560,8 @@
                     }
                 }
                 
-                chatHistory.push({ user: text, assistant: fullResponse });
+                chatHistory.push({ user: text, assistant: fullResponse, timestamp: Date.now() });
+                saveChatHistory();
                 
                 streamMessageDiv.classList.remove('streaming');
                 
@@ -742,8 +850,167 @@
         
         function clearHistory() {
             chatHistory = [];
+            localStorage.removeItem('port_chat_history');
             messagesContainer.innerHTML = '<div class="message assistant"><div class="avatar">🤖</div><div class="message-content"><p>您好！我是您的码头港口财务管理智能助手。</p><p>我可以帮助您：</p><ul><li>📊 帮您生成财务报表</li><li>📈 分析财务数据和指标</li><li>💰 进行预算编制和成本控制</li><li>📝 整理会议记录</li><li>📋 制定安全培训方案</li></ul><p>请输入您的问题，我将为您提供专业的服务！</p></div></div>';
         }
+        
+        async function generateAnnualFinancialReport() {
+            const financialHistory = getFinancialHistory();
+            let historySummary = '';
+            if (financialHistory.length > 0) {
+                historySummary = '【历史财务数据参考】\n';
+                financialHistory.forEach((item, index) => {
+                    const date = new Date(item.timestamp || Date.now());
+                    const dateStr = `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
+                    if (item.user) historySummary += `${dateStr} 用户: ${item.user.substring(0, 100)}\n`;
+                    if (item.assistant) historySummary += `${dateStr} 助手: ${item.assistant.substring(0, 200)}\n`;
+                });
+            }
+            
+            const prompt = `请基于以下信息为我生成一份年度财务支出报告：
+
+${historySummary}
+
+请完成以下任务：
+1. 整合一周内、一月内、一季度内的财务报告数据，生成一年内的财务支出报告
+2. 分析近年公司财务收入支出情况，包括收入趋势、支出结构、利润变化
+3. 结合未来市场发展情况，提出财务改进方案和建议
+
+请使用Markdown格式输出，包含表格和分析图表。`;
+            
+            userInput.value = prompt;
+            await sendMessage();
+        }
+        
+        async function generateSafetyImprovementPlan() {
+            const safetyHistory = getSafetyHistory();
+            let historySummary = '';
+            if (safetyHistory.length > 0) {
+                historySummary = '【历史安全相关记录】\n';
+                safetyHistory.forEach((item, index) => {
+                    const date = new Date(item.timestamp || Date.now());
+                    const dateStr = `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
+                    if (item.user) historySummary += `${dateStr} 用户: ${item.user.substring(0, 100)}\n`;
+                    if (item.assistant) historySummary += `${dateStr} 助手: ${item.assistant.substring(0, 200)}\n`;
+                });
+            }
+            
+            const prompt = `请为我生成一份港口码头安全生产改进方案：
+
+${historySummary}
+
+参考法规（知识截止日期：2024年）：
+- 《中华人民共和国港口法》
+- 《港口危险货物安全管理规定》
+- 《港口设施保安规则》
+- 《广东省港口条例》
+- 《广东省安全生产条例》
+- 《起重机械安全规程》(GB 6067.1)
+- 《场(厂)内专用机动车辆安全技术规程》(GB/T 10827)
+
+请完成以下任务：
+1. 结合近年广东省和国内发布的港口码头安全生产相关条例
+2. 根据上述安全相关记录，分析当前存在的安全问题和改进需求
+3. 制定未来安全生产改进方案，包括：
+   - 设备安全管理（吊机、叉车、铲车）
+   - 人员安全培训（装卸人员、操作人员）
+   - 安全制度完善
+   - 应急预案优化
+   - 风险防控措施
+
+请使用Markdown格式输出，结构清晰。`;
+            
+            userInput.value = prompt;
+            await sendMessage();
+        }
+        
+        function openHistoryModal() {
+            document.getElementById('history-modal').classList.add('active');
+            renderHistory();
+        }
+        
+        function closeHistoryModal() {
+            document.getElementById('history-modal').classList.remove('active');
+        }
+        
+        function filterHistory(category) {
+            currentFilter = category;
+            document.querySelectorAll('.category-tab').forEach(tab => {
+                tab.classList.toggle('active', tab.textContent.trim() === getCategoryLabel(category));
+            });
+            renderHistory();
+        }
+        
+        function getCategoryLabel(category) {
+            const labels = { 'all': '全部', 'financial': '财务相关', 'safety': '安全相关', 'hr': '人事相关', 'other': '其他' };
+            return labels[category] || '全部';
+        }
+        
+        function searchHistory() {
+            currentSearch = document.getElementById('history-search').value.toLowerCase();
+            renderHistory();
+        }
+        
+        function renderHistory() {
+            const content = document.getElementById('history-content');
+            let filtered = chatHistory;
+            
+            if (currentFilter !== 'all') {
+                filtered = filtered.filter(item => {
+                    const text = (item.user || item.assistant || '');
+                    return categorizeMessage(text) === currentFilter;
+                });
+            }
+            
+            if (currentSearch) {
+                filtered = filtered.filter(item => {
+                    const text = ((item.user || '') + (item.assistant || '')).toLowerCase();
+                    return text.includes(currentSearch);
+                });
+            }
+            
+            if (filtered.length === 0) {
+                content.innerHTML = '<div class="no-results">暂无匹配的聊天记录</div>';
+                return;
+            }
+            
+            content.innerHTML = filtered.map(item => {
+                const date = new Date(item.timestamp || Date.now());
+                const timeStr = `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')} ${String(date.getHours()).padStart(2,'0')}:${String(date.getMinutes()).padStart(2,'0')}`;
+                
+                let userContent = '';
+                if (item.user) {
+                    let highlighted = item.user;
+                    if (currentSearch) {
+                        const regex = new RegExp(`(${currentSearch})`, 'gi');
+                        highlighted = item.user.replace(regex, '<span class="highlight">$1</span>');
+                    }
+                    userContent = `<div class="history-item"><div class="role">👤 用户</div><div class="content">${highlighted}</div><div class="time">${timeStr}</div></div>`;
+                }
+                
+                let assistantContent = '';
+                if (item.assistant) {
+                    let highlighted = item.assistant.replace(/[#*`]/g, '');
+                    if (currentSearch) {
+                        const regex = new RegExp(`(${currentSearch})`, 'gi');
+                        highlighted = highlighted.replace(regex, '<span class="highlight">$1</span>');
+                    }
+                    assistantContent = `<div class="history-item"><div class="role">🤖 助手</div><div class="content">${highlighted}</div><div class="time">${timeStr}</div></div>`;
+                }
+                
+                return userContent + assistantContent;
+            }).join('');
+        }
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            if (chatHistory.length > 0) {
+                messagesContainer.innerHTML = '';
+                chatHistory.forEach(item => {
+                    if (item.user) addMessage(item.user, 'user');
+                    if (item.assistant) addMessage(item.assistant, 'assistant');
+                });
+            }
+        });
     </script>
 </body>
 </html>
