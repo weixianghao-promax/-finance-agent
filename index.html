@@ -343,10 +343,8 @@
             const isImage = uploadedFileName && ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'].includes(uploadedFileName.split('.').pop().toLowerCase());
             
             if (isImage && uploadedFileContent) {
-                userContent = [
-                    { type: 'text', text: text || '请识别这张图片中的财务信息' },
-                    { type: 'image_url', image_url: { url: uploadedFileContent } }
-                ];
+                systemPrompt += '\n\n用户上传了一张图片文件（文件名：' + uploadedFileName + '），请根据用户的描述进行分析。由于当前模型不支持图片识别，用户需要手动描述图片内容。';
+                userContent = text || '请描述您上传的图片内容，我会根据您的描述进行分析。';
             } else if (uploadedFileContent) {
                 systemPrompt += '\n\n用户上传的文件内容如下（文件名：' + uploadedFileName + '）：\n' + uploadedFileContent;
                 userContent = text;
