@@ -62,6 +62,15 @@
         .desensitize-toggle input[type="checkbox"]:checked + .toggle-slider { background: #68d391; }
         .desensitize-toggle input[type="checkbox"]:checked + .toggle-slider::before { transform: translateX(20px); }
         .toggle-label { margin-left: 8px; color: rgba(255,255,255,0.8); font-size: 14px; }
+        .security-section { margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+        .security-section h3 { color: #68d391; margin-bottom: 10px; font-size: 15px; }
+        .security-item { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; padding: 8px; background: rgba(0,0,0,0.2); border-radius: 8px; }
+        .security-item label { color: rgba(255,255,255,0.9); font-size: 14px; }
+        .security-item input[type="text"] { flex: 1; max-width: 200px; padding: 8px; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px; background: rgba(0,0,0,0.3); color: white; font-size: 14px; }
+        .security-item input[type="checkbox"] { width: 18px; height: 18px; cursor: pointer; }
+        .security-btn { padding: 10px 20px; margin-right: 10px; border: none; border-radius: 8px; background: linear-gradient(135deg, #42a5f5, #1e88e5); color: white; cursor: pointer; font-size: 14px; transition: all 0.3s; }
+        .security-btn:hover { background: linear-gradient(135deg, #1e88e5, #1565c0); }
+        #security-stats { color: rgba(255,255,255,0.8); font-size: 13px; line-height: 1.8; }
         .download-section { margin-top: 10px; }
         .download-btn { display: inline-block; padding: 8px 16px; background: #42a5f5; color: white; text-decoration: none; border-radius: 8px; font-size: 14px; transition: all 0.3s ease; }
         .download-btn:hover { background: #1e88e5; }
@@ -100,6 +109,7 @@
         <button class="quick-btn financial" onclick="generateAnnualFinancialReport()">📊 年度财务整合</button>
         <button class="quick-btn safety" onclick="generateSafetyImprovementPlan()">🛡️ 安全生产方案</button>
         <button class="quick-btn history" onclick="openHistoryModal()">📋 聊天记录</button>
+        <button class="quick-btn security" onclick="openSecurityModal()">🔐 安全设置</button>
     </div>
     
     <div class="main-content">
@@ -161,6 +171,72 @@
                 <input type="text" id="history-search" placeholder="搜索关键字..." oninput="searchHistory()">
             </div>
             <div class="modal-content" id="history-content">
+            </div>
+        </div>
+    </div>
+    
+    <div class="modal-overlay" id="security-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2>🔐 安全设置</h2>
+                <button class="modal-close" onclick="closeSecurityModal()">×</button>
+            </div>
+            <div class="modal-content">
+                <div class="security-section">
+                    <h3>脱敏上传设置</h3>
+                    <div class="security-item">
+                        <label>启用脱敏上传</label>
+                        <input type="checkbox" id="security-desensitize" onchange="updateSecuritySettings()">
+                    </div>
+                    <div class="security-item">
+                        <label>自定义加密密钥</label>
+                        <input type="text" id="security-key" placeholder="输入加密密钥" onchange="updateSecuritySettings()">
+                    </div>
+                </div>
+                <div class="security-section">
+                    <h3>脱敏规则</h3>
+                    <div class="security-item">
+                        <label>手机号脱敏</label>
+                        <input type="checkbox" id="rule-phone" checked>
+                    </div>
+                    <div class="security-item">
+                        <label>身份证号脱敏</label>
+                        <input type="checkbox" id="rule-id" checked>
+                    </div>
+                    <div class="security-item">
+                        <label>银行账号脱敏</label>
+                        <input type="checkbox" id="rule-bank" checked>
+                    </div>
+                    <div class="security-item">
+                        <label>金额脱敏</label>
+                        <input type="checkbox" id="rule-amount" checked>
+                    </div>
+                    <div class="security-item">
+                        <label>公司名称脱敏</label>
+                        <input type="checkbox" id="rule-company" checked>
+                    </div>
+                    <div class="security-item">
+                        <label>姓名脱敏</label>
+                        <input type="checkbox" id="rule-name" checked>
+                    </div>
+                    <div class="security-item">
+                        <label>邮箱脱敏</label>
+                        <input type="checkbox" id="rule-email" checked>
+                    </div>
+                    <div class="security-item">
+                        <label>微信号脱敏</label>
+                        <input type="checkbox" id="rule-wechat" checked>
+                    </div>
+                </div>
+                <div class="security-section">
+                    <h3>统计信息</h3>
+                    <div id="security-stats"></div>
+                </div>
+                <div class="security-section">
+                    <h3>操作</h3>
+                    <button class="security-btn" onclick="exportSecurityLogs()">导出日志</button>
+                    <button class="security-btn" onclick="clearSecurityLogs()">清除日志</button>
+                </div>
             </div>
         </div>
     </div>
@@ -937,6 +1013,65 @@ ${historySummary}
         
         function closeHistoryModal() {
             document.getElementById('history-modal').classList.remove('active');
+        }
+        
+        function openSecurityModal() {
+            const modal = document.getElementById('security-modal');
+            modal.classList.add('active');
+            updateSecurityStats();
+            const toggle = document.getElementById('desensitize-toggle');
+            const securityToggle = document.getElementById('security-desensitize');
+            securityToggle.checked = toggle ? toggle.checked : false;
+        }
+        
+        function closeSecurityModal() {
+            document.getElementById('security-modal').classList.remove('active');
+        }
+        
+        function updateSecuritySettings() {
+            const toggle = document.getElementById('desensitize-toggle');
+            const securityToggle = document.getElementById('security-desensitize');
+            const keyInput = document.getElementById('security-key');
+            
+            if (toggle) {
+                toggle.checked = securityToggle.checked;
+            }
+            
+            if (keyInput.value) {
+                desensitizationProxy.setSettings({ encryptionKey: keyInput.value });
+            }
+            
+            updateSecurityStats();
+        }
+        
+        function updateSecurityStats() {
+            const stats = desensitizationProxy.getStatistics();
+            const logs = desensitizationProxy.getLogs();
+            const statsDiv = document.getElementById('security-stats');
+            
+            statsDiv.innerHTML = `
+                <p>• 总替换数: ${stats.totalReplaced}</p>
+                <p>• 映射表大小: ${stats.mappingSize}</p>
+                <p>• 日志条数: ${stats.logsCount}</p>
+                <p>• 分类统计:</p>
+                <p>  - 手机号: ${stats.byCategory.phone}</p>
+                <p>  - 身份证: ${stats.byCategory.id}</p>
+                <p>  - 银行账号: ${stats.byCategory.bank}</p>
+                <p>  - 金额: ${stats.byCategory.amount}</p>
+                <p>  - 公司名称: ${stats.byCategory.company}</p>
+                <p>  - 姓名: ${stats.byCategory.name}</p>
+                <p>  - 邮箱: ${stats.byCategory.email}</p>
+                <p>  - 微信号: ${stats.byCategory.wechat}</p>
+            `;
+        }
+        
+        function exportSecurityLogs() {
+            desensitizationProxy.exportLogs();
+        }
+        
+        function clearSecurityLogs() {
+            desensitizationProxy.clearLogs();
+            updateSecurityStats();
         }
         
         function filterHistory(category) {
