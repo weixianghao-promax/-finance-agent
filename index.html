@@ -4,9 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>码头港口财务管理智能助手</title>
-    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/11.1.1/marked.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif; background: linear-gradient(135deg, #0c1445 0%, #1a237e 50%, #283593 100%); min-height: 100vh; display: flex; }
@@ -171,7 +172,30 @@
         }
         
         async function readPDF(file) {
-            return 'PDF文件内容\n文件名: ' + file.name + '\n大小: ' + file.size + '字节\n提示：请将PDF内容复制为文本后重新上传，或转为Word格式。';
+            try {
+                const arrayBuffer = await new Promise(function(resolve, reject) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) { resolve(e.target.result); };
+                    reader.onerror = reject;
+                    reader.readAsArrayBuffer(file);
+                });
+                const data = new Uint8Array(arrayBuffer);
+                if (typeof pdfjsLib !== 'undefined') {
+                    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+                }
+                const doc = await pdfjsLib.getDocument({ data }).promise;
+                let text = '=== PDF文件: ' + file.name + ' ===\n';
+                for (let i = 1; i <= doc.numPages; i++) {
+                    const page = await doc.getPage(i);
+                    const content = await page.getTextContent();
+                    text += '\n--- 第 ' + i + ' 页 ---\n';
+                    text += content.items.map(function(item) { return item.str; }).join(' ');
+                }
+                return text.trim();
+            } catch (e) {
+                console.error('PDF parsing failed:', e);
+                return 'PDF文件内容（解析失败）\n文件名: ' + file.name + '\n大小: ' + file.size + '字节\n提示：请将PDF内容复制为文本后重新上传，或转为Word格式。';
+            }
         }
         
         async function readWord(file) {
