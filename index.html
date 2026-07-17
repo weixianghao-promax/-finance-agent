@@ -6,6 +6,7 @@
     <title>码头港口财务管理智能助手</title>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif; background: linear-gradient(135deg, #0c1445 0%, #1a237e 50%, #283593 100%); min-height: 100vh; display: flex; }
@@ -290,12 +291,26 @@
    - 提供关键财务分析结论
 3. **不要拒绝回答**：无论用户的问题多么笼统，都要给出合理的回应，不要说"请提供更具体的需求"或"无法理解"
 
-### 输出格式要求
-- 言简意赅，直接给出整理思路和结论，无需思考过程
-- 对于数据分析类问题，提供清晰的分析思路和结论
-- 对于报表类请求，提供结构化的报表格式（使用|分隔的表格形式）
-- 对于咨询类问题，提供专业建议和可行方案
-- 对于上传文件，直接给出整理后的核心内容和关键结论
+### 输出格式要求（严格按照以下三种格式输出）
+
+#### 1. 纯文本报销汇总表格式（当用户询问报销汇总时使用）
+使用纯文本表格形式，便于复制粘贴，格式如下：
+费用类别 | 主要支出项目 | 金额（元） | 说明
+-------- | ----------- | ---------- | ----
+类别1 | 项目1 | 金额1 | 说明1
+类别2 | 项目2 | 金额2 | 说明2
+
+#### 2. Markdown格式（日常对话、数据分析、财务咨询时使用）
+- 使用Markdown语法进行格式化
+- 表格使用|分隔
+- 重点内容使用**加粗**
+- 列表使用-或*
+- 标题使用#
+
+#### 3. 文件格式（当用户提到飞书、企业微信等办公软件时使用）
+- 用户提到"飞书"、"企业微信"、"钉钉"、"邮件"等场景时，提示用户可以下载Excel/Word/PPT/PDF文件
+- 自动生成整理后的文件并提供下载链接
+- 根据原始文件类型生成对应格式：Excel→Excel、Word→Word、PPT→PPT、PDF→Word
 
 ## 注意事项
 - 保护用户的财务数据安全
@@ -404,7 +419,7 @@
                 `;
             }
             
-            const formattedText = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br>');
+            const formattedText = role === 'assistant' ? marked.parse(text) : text.replace(/\n/g, '<br>');
             messageDiv.innerHTML = `<div class="avatar">${avatar}</div><div class="message-content">${formattedText}${downloadSection}</div>`;
             messagesContainer.appendChild(messageDiv);
             messagesContainer.scrollTop = messagesContainer.scrollHeight;
