@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>码头港口财务管理智能助手</title>
+    <title>港口码头管理方案生成助手</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/11.1.1/marked.min.js"></script>
@@ -67,12 +67,14 @@
 </head>
 <body>
     <div class="sidebar">
-        <h2>📊 功能菜单</h2>
-        <div class="nav-item active" onclick="sendQuickAction('帮我整理财务报表')">💬 智能对话</div>
-        <div class="nav-item" onclick="sendQuickAction('帮我生成一份报销汇总表')">📊 报表生成</div>
+        <h2>🚢 功能菜单</h2>
+        <div class="nav-item active" onclick="sendQuickAction('帮我整理文件')">💬 智能对话</div>
+        <div class="nav-item" onclick="sendQuickAction('帮我生成一份财务报表')">📊 财务报表</div>
         <div class="nav-item" onclick="sendQuickAction('帮我分析财务数据')">📈 数据分析</div>
         <div class="nav-item" onclick="sendQuickAction('帮我制定预算方案')">💰 预算管理</div>
-        <div class="nav-item" onclick="sendQuickAction('帮我制定安全培训方案')">🛡️ 安全培训</div>
+        <div class="nav-item" onclick="sendQuickAction('帮我生成人事招收方案')">👥 人事方案</div>
+        <div class="nav-item" onclick="sendQuickAction('帮我生成个性化实习方案')">🎓 实习方案</div>
+        <div class="nav-item" onclick="sendQuickAction('帮我生成吊机安全生产方案')">🛡️ 安全生产</div>
         
         <div class="quick-actions">
             <h3>⚡ 快速操作</h3>
@@ -80,6 +82,9 @@
             <div class="quick-action-item" onclick="sendQuickAction('帮我生成本周工作周报')">📅 生成周报</div>
             <div class="quick-action-item" onclick="sendQuickAction('帮我生成本月工作月报')">📆 生成月报</div>
             <div class="quick-action-item" onclick="sendQuickAction('帮我进行成本分析')">📉 成本分析</div>
+            <div class="quick-action-item" onclick="sendQuickAction('帮我生成叉车安全操作规程')">🚜 叉车安全</div>
+            <div class="quick-action-item" onclick="sendQuickAction('帮我生成铲车安全操作规程')">⛏️ 铲车安全</div>
+            <div class="quick-action-item" onclick="sendQuickAction('帮我生成装卸人员安全规范')">👷 装卸安全</div>
             <div class="quick-action-item" onclick="clearHistory()">🗑️ 清除历史</div>
         </div>
     </div>
@@ -87,7 +92,7 @@
     <div class="main-content">
         <div class="privacy-banner">🔒 数据安全保障：您的文件和消息在发送给AI前已自动脱敏，敏感信息（手机号、身份证、金额、公司名称等）被替换为随机占位符，AI无法接触原始数据。回复后自动还原为真实数据显示给您。</div>
         <div class="header">
-            <h1>🚢 码头港口财务管理智能助手</h1>
+            <h1>🚢 港口码头管理方案生成助手</h1>
             <div class="model-info">接入 DeepSeek 大模型</div>
         </div>
         
@@ -96,14 +101,14 @@
                 <div class="message assistant">
                     <div class="avatar">🤖</div>
                     <div class="message-content">
-                        <p>您好！我是您的码头港口财务管理智能助手。</p>
+                        <p>您好！我是您的港口码头管理方案生成助手。</p>
                         <p>我可以帮助您：</p>
                         <ul>
-                            <li>📊 帮您生成财务报表</li>
-                            <li>📈 分析财务数据和指标</li>
-                            <li>💰 进行预算编制和成本控制</li>
-                            <li>📝 整理会议记录</li>
-                            <li>📋 制定安全培训方案</li>
+                            <li>📊 生成财务报表和数据分析</li>
+                            <li>👥 制定人事招收方案和招聘流程</li>
+                            <li>🎓 根据性格特点生成个性化实习方案</li>
+                            <li>🛡️ 生成吊机、叉车、铲车安全生产方案</li>
+                            <li>📝 识别图片文字并分类整理</li>
                         </ul>
                         <p>请输入您的问题，我将为您提供专业的服务！</p>
                     </div>
@@ -345,6 +350,29 @@
             }
         }
         
+        function classifyImageContent(text) {
+            const categories = {
+                '财务票据': ['发票', '收据', '报销', '金额', '费用', '付款', '收款', '凭证', '票据'],
+                '安全文档': ['安全', '操作规程', '应急预案', '风险', '隐患', '事故', '防护', '吊机', '叉车', '铲车', '装卸'],
+                '人事资料': ['简历', '面试', '招聘', '入职', '实习', '培训', '考核', '工资', '薪酬'],
+                '合同协议': ['合同', '协议', '条款', '签署', '甲方', '乙方'],
+                '物流单据': ['提单', '报关', '运单', '装箱单', '货物', '集装箱', '船名', '航次'],
+                '行政通知': ['通知', '公告', '规定', '制度', '办法', '要求']
+            };
+            
+            const textLower = text.toLowerCase();
+            
+            for (const [category, keywords] of Object.entries(categories)) {
+                for (const keyword of keywords) {
+                    if (textLower.includes(keyword.toLowerCase())) {
+                        return category;
+                    }
+                }
+            }
+            
+            return '其他';
+        }
+        
         async function readImage(file) {
             try {
                 const { createWorker } = Tesseract;
@@ -355,7 +383,9 @@
                 const { data: { text } } = await worker.recognize(file);
                 await worker.terminate();
                 
-                return '=== 图片识别结果: ' + file.name + ' ===\n' + text.trim();
+                const category = classifyImageContent(text);
+                
+                return '=== 图片识别结果: ' + file.name + ' ===\n分类：' + category + '\n\n' + text.trim();
             } catch (e) {
                 console.error('图片识别失败:', e);
                 return '图片文件内容（识别失败）\n文件名: ' + file.name + '\n大小: ' + file.size + '字节\n提示：请手动描述图片内容，或复制图片中的文字重新上传。';
@@ -391,7 +421,7 @@
         }
         
         async function callDeepSeekAPI(text) {
-            let systemPrompt = '你是一位专业的码头港口财务智能顾问，具备丰富的财务管理经验和专业知识。\n\n## 核心职责\n1. **财务数据分析**：深入分析码头港口的收入、支出、利润等财务数据\n2. **报表生成**：生成各类财务报表，如分类汇总表、收支明细表、成本分析表\n3. **财务咨询**：提供专业的财务建议和决策支持\n4. **票据处理**：识别和处理各类财务票据信息\n5. **预算管理**：协助进行预算编制和成本控制\n\n## 业务领域知识\n- 港口码头主要收入来源：装卸费、堆存费、船舶代理费、拖轮费等\n- 主要成本项目：人工成本、设备维护、能源消耗、码头设施折旧等\n- 财务指标：吞吐量、装卸效率、单位成本、利润率等\n\n## 重要指导原则\n### 处理模糊/笼统语言\n当用户的问题较为笼统或模糊时（如"帮我整理一下"、"分析这份文件"、"给我一份表格"等），请根据以下步骤处理：\n1. **主动推断意图**：结合已上传的文件内容和上下文，推断用户的真实需求\n2. **默认行为**：如果用户没有明确说明具体需求，默认进行以下操作：\n   - 对上传的财务文件进行分类整理\n   - 生成收支分类汇总表\n   - 提供关键财务分析结论\n3. **不要拒绝回答**：无论用户的问题多么笼统，都要给出合理的回应，不要说"请提供更具体的需求"或"无法理解"\n\n### 输出格式要求（严格按照以下三种格式输出）\n\n#### 1. 纯文本报销汇总表格式（当用户询问报销汇总时使用）\n使用纯文本表格形式，便于复制粘贴，格式如下：\n费用类别 | 主要支出项目 | 金额（元） | 说明\n-------- | ----------- | ---------- | ----\n类别1 | 项目1 | 金额1 | 说明1\n类别2 | 项目2 | 金额2 | 说明2\n\n#### 2. Markdown格式（日常对话、数据分析、财务咨询时使用）\n- 使用Markdown语法进行格式化\n- 表格使用|分隔\n- 重点内容使用**加粗**\n- 列表使用-或*\n- 标题使用#\n\n#### 3. 文件格式（当用户提到飞书、企业微信等办公软件时使用）\n- 用户提到"飞书"、"企业微信"、"钉钉"、"邮件"等场景时，提示用户可以下载Excel/Word/PPT/PDF文件\n- 自动生成整理后的文件并提供下载链接\n- 根据原始文件类型生成对应格式：Excel→Excel、Word→Word、PPT→PPT、PDF→Word\n\n### 财务单据标准化输出结构（必须包含以下4个区域）\n\n#### 1. 单据基础信息区\n```\n单据编号：XXX\n单据日期：YYYY-MM-DD\n审批人：XXX\n归属部门：XXX\n填报人：XXX\n填报日期：YYYY-MM-DD\n```\n\n#### 2. 核心费用明细区\n```\n| 序号 | 费用事由 | 金额（元） | 支付方式 | 备注 |\n| --- | --- | --- | --- | --- |\n| 1 | 事由1 | 金额1 | 支付方式1 | 备注1 |\n| 2 | 事由2 | 金额2 | 支付方式2 | 备注2 |\n| ... | ... | ... | ... | ... |\n```\n\n#### 3. 合计汇总区\n```\n小写金额：￥XXX.XX元\n大写金额：XXX元整\n```\n\n#### 4. 异常备注区\n```\n异常类型：[单据残缺/识别错误/金额不全/其他]\n异常描述：XXX\n处理建议：XXX\n```\n\n**注意**：如果没有异常，异常备注区显示"无异常"。每次输出财务单据时，必须完整包含以上4个区域。\n\n## 图片识别功能\n当用户上传图片时（如发票、收据、报销单照片等），请识别图片中的财务信息：\n1. **文字识别**：提取图片中的所有文字内容\n2. **关键信息提取**：识别金额、日期、发票号码、单位名称等\n3. **结构化输出**：将识别结果整理成表格或结构化数据\n4. **异常处理**：如果图片模糊或信息不完整，在异常备注区说明\n\n## 注意事项\n- 保护用户的财务数据安全\n- 对于不确定的信息，明确告知用户\n- 保持回答的准确性和可靠性';
+            let systemPrompt = '你是一位专业的港口码头管理智能助手，具备丰富的港口运营管理经验和专业知识，涵盖财务管理、人事管理和安全生产等多个领域。\n\n## 核心职责\n1. **财务管理**：分析码头港口的收入、支出、利润等财务数据，生成各类财务报表，提供专业的财务建议和决策支持\n2. **人事管理**：生成人事招收方案，根据实习生性格特点制定个性化实习方案，优化人力资源配置\n3. **安全生产**：生成符合港口码头特点的安全生产方案，涵盖吊机、叉车、铲车、装卸人员等岗位的安全操作规范和应急预案\n4. **文档处理**：识别和处理各类文档和图片信息，进行分类整理和内容提取\n5. **综合咨询**：提供港口码头运营管理相关的专业建议和决策支持\n\n## 业务领域知识\n- **财务管理**：港口码头主要收入来源包括装卸费、堆存费、船舶代理费、拖轮费等；主要成本项目包括人工成本、设备维护、能源消耗、码头设施折旧等；关键财务指标包括吞吐量、装卸效率、单位成本、利润率等\n- **人事管理**：港口码头主要岗位包括管理人员、技术人员、操作工人（吊机司机、叉车司机、铲车司机、装卸人员）、后勤人员等；招聘流程包括岗位需求分析、简历筛选、面试评估、入职培训等\n- **安全生产**：港口码头主要设备包括吊机、叉车、铲车、集装箱装卸设备等；安全风险包括起重伤害、车辆伤害、高处坠落、物体打击、触电等；安全管理体系包括安全规章制度、操作规程、应急预案、安全培训等\n\n## 重要指导原则\n### 处理模糊/笼统语言\n当用户的问题较为笼统或模糊时（如"帮我整理一下"、"分析这份文件"、"给我一份表格"等），请根据以下步骤处理：\n1. **主动推断意图**：结合已上传的文件内容和上下文，推断用户的真实需求\n2. **默认行为**：如果用户没有明确说明具体需求，默认进行以下操作：\n   - 对上传的文件进行分类整理\n   - 根据文件类型生成相应的分析报告\n   - 提供关键结论和建议\n3. **不要拒绝回答**：无论用户的问题多么笼统，都要给出合理的回应，不要说"请提供更具体的需求"或"无法理解"\n\n### 输出格式要求（严格按照以下三种格式输出）\n\n#### 1. 纯文本表格格式（当用户需要数据汇总时使用）\n使用纯文本表格形式，便于复制粘贴，格式如下：\n类别 | 项目 | 金额（元） | 说明\n-------- | ----------- | ---------- | ----\n类别1 | 项目1 | 金额1 | 说明1\n类别2 | 项目2 | 金额2 | 说明2\n\n#### 2. Markdown格式（日常对话、数据分析、咨询时使用）\n- 使用Markdown语法进行格式化\n- 表格使用|分隔\n- 重点内容使用**加粗**\n- 列表使用-或*\n- 标题使用#\n\n#### 3. 文件格式（当用户提到飞书、企业微信等办公软件时使用）\n- 用户提到"飞书"、"企业微信"、"钉钉"、"邮件"等场景时，提示用户可以下载Excel/Word/PPT/PDF文件\n- 自动生成整理后的文件并提供下载链接\n- 根据原始文件类型生成对应格式：Excel→Excel、Word→Word、PPT→PPT、PDF→Word\n\n### 人事方案标准化输出结构（必须包含以下4个区域）\n\n#### 1. 岗位需求分析区\n```\n岗位名称：XXX\n岗位类别：[管理岗/技术岗/操作岗/后勤岗]\n需求人数：X人\n岗位职责：XXX\n任职要求：XXX\n```\n\n#### 2. 招聘流程区\n```\n招聘阶段 | 时间安排 | 主要任务\n--- | --- | ---\n简历筛选 | 第1-3天 | 筛选符合条件的简历\n面试评估 | 第4-7天 | 进行初试和复试\n录用通知 | 第8天 | 发放录用通知\n入职培训 | 第9-14天 | 进行岗前培训\n```\n\n#### 3. 面试评估标准区\n```\n评估维度 | 权重 | 评分标准\n--- | --- | ---\n专业技能 | 30% | 相关工作经验和专业知识\n综合素质 | 25% | 沟通能力、团队协作、责任心\n岗位匹配度 | 25% | 性格特点与岗位要求的匹配程度\n发展潜力 | 20% | 学习能力和职业发展潜力\n```\n\n#### 4. 备注区\n```\n备注信息：XXX\n```\n\n### 实习方案标准化输出结构（必须包含以下4个区域）\n\n#### 1. 实习生基本信息区\n```\n姓名：XXX\n专业：XXX\n性格特点：XXX\n实习岗位：XXX\n实习周期：XXX\n```\n\n#### 2. 岗位匹配分析区\n```\n性格特点分析：XXX\n推荐岗位：XXX\n匹配理由：XXX\n```\n\n#### 3. 培训计划区\n```\n阶段 | 时间 | 培训内容\n--- | --- | ---\n第一阶段 | 第1-2周 | 公司概况、安全培训、岗位认知\n第二阶段 | 第3-4周 | 专业技能培训、导师带教\n第三阶段 | 第5-8周 | 独立工作实践、项目参与\n```\n\n#### 4. 考核标准区\n```\n考核维度 | 权重 | 考核方式\n--- | --- | ---\n工作态度 | 30% | 日常表现、出勤情况\n专业技能 | 35% | 实操考核、技能测试\n团队协作 | 20% | 同事评价、团队项目表现\n综合能力 | 15% | 实习总结报告、答辩\n```\n\n### 安全生产方案标准化输出结构（必须包含以下4个区域）\n\n#### 1. 设备/岗位信息区\n```\n设备类型：[吊机/叉车/铲车/装卸人员]\n风险等级：[高/中/低]\n适用范围：XXX\n```\n\n#### 2. 安全操作规程区\n```\n操作步骤 | 安全要求\n--- | ---\n步骤1 | 安全要求1\n步骤2 | 安全要求2\n步骤3 | 安全要求3\n```\n\n#### 3. 安全风险与防控区\n```\n风险类型 | 风险描述 | 防控措施\n--- | --- | ---\n风险1 | 风险描述1 | 防控措施1\n风险2 | 风险描述2 | 防控措施2\n```\n\n#### 4. 应急预案区\n```\n应急事件 | 应急措施 | 责任人员\n--- | --- | ---\n事件1 | 措施1 | 责任人1\n事件2 | 措施2 | 责任人2\n```\n\n## 图片识别功能\n当用户上传图片时（如发票、收据、报销单照片、安全检查表、人员证件等），请识别图片中的文字内容：\n1. **文字识别**：提取图片中的所有文字内容\n2. **内容分类**：根据内容进行分类（财务票据、安全文档、人事资料、其他）\n3. **结构化输出**：将识别结果整理成表格或结构化数据\n4. **异常处理**：如果图片模糊或信息不完整，在备注区说明\n\n## 注意事项\n- 保护用户的业务数据安全\n- 对于不确定的信息，明确告知用户\n- 保持回答的准确性和可靠性\n- 生成的方案需符合港口码头行业规范和安全标准';
             
             if (uploadedFileContent) {
                 systemPrompt += '\n\n用户上传的文件内容如下（文件名：' + uploadedFileName + '）：\n' + uploadedFileContent;
@@ -413,7 +443,7 @@
             const response = await fetch(BASE_URL + '/v1/chat/completions', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + API_KEY },
-                body: JSON.stringify({ model: MODEL, messages: messages, temperature: 0.7, max_tokens: 4096 })
+                body: JSON.stringify({ model: MODEL, messages: messages, temperature: 0.5, max_tokens: 2048, stream: false })
             });
             
             if (!response.ok) {
