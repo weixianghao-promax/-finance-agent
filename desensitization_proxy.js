@@ -492,7 +492,10 @@ class PrivacyDetector {
 const privacyDetector = new PrivacyDetector();
 
 if (typeof window !== 'undefined') {
+    window.desensitizationProxy = desensitizationProxy;
     window.privacyDetector = privacyDetector;
+    window.DesensitizationProxy = DesensitizationProxy;
+    window.PrivacyDetector = PrivacyDetector;
 }
 
 if (typeof module !== 'undefined' && module.exports) {
