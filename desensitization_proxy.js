@@ -491,6 +491,10 @@ class PrivacyDetector {
 
 const privacyDetector = new PrivacyDetector();
 
+if (typeof window !== 'undefined') {
+    window.privacyDetector = privacyDetector;
+}
+
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = { DesensitizationProxy, desensitizationProxy, PrivacyDetector, privacyDetector };
 }
