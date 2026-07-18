@@ -101,41 +101,54 @@ class DesensitizationProxy {
 
     desensitize(text) {
         if (!this.settings.enabled || !text) return text;
-        
+
         this.reset();
         const originalLength = text.length;
         let result = String(text);
 
-        const pattern = new RegExp(this.patterns.map(p => p.pattern.source).join('|'), 'g');
-        let match;
+        const sources = this.patterns.map(p => p.pattern.source);
+        const combinedPattern = new RegExp(sources.join('|'), 'g');
         const processed = new Set();
-        
-        while ((match = pattern.exec(result)) !== null) {
-            const matchedStr = match[0];
-            if (processed.has(matchedStr)) continue;
+
+        const matches = result.match(combinedPattern) || [];
+        matches.forEach(matchedStr => {
+            if (processed.has(matchedStr)) return;
             processed.add(matchedStr);
-            
-            const categoryPattern = this.patterns.find(p => p.pattern.test(matchedStr));
-            const category = categoryPattern ? categoryPattern.category : 'custom';
+
+            let category = 'custom';
+            for (const p of this.patterns) {
+                const testRegex = new RegExp(p.pattern.source);
+                if (testRegex.test(matchedStr)) {
+                    category = p.category;
+                    break;
+                }
+            }
             const code = this.generateCode(category, matchedStr);
             this.mapping[matchedStr] = code;
             this.reverseMapping[code] = matchedStr;
             this.counters[category] = (this.counters[category] || 0) + 1;
-        }
+        });
 
-        if (this.settings.customRules.length > 0) {
+        if (this.settings.customRules && this.settings.customRules.length > 0) {
             this.settings.customRules.forEach(rule => {
-                const customPattern = new RegExp(rule.pattern, 'g');
-                while ((match = customPattern.exec(result)) !== null) {
-                    const matchedStr = match[0];
-                    if (processed.has(matchedStr)) continue;
+                let customPattern;
+                try {
+                    customPattern = rule.pattern instanceof RegExp
+                        ? new RegExp(rule.pattern.source, 'g')
+                        : new RegExp(rule.pattern, 'g');
+                } catch (e) {
+                    return;
+                }
+                const customMatches = result.match(customPattern) || [];
+                customMatches.forEach(matchedStr => {
+                    if (processed.has(matchedStr)) return;
                     processed.add(matchedStr);
-                    
+
                     const code = this.generateCode('custom', matchedStr);
                     this.mapping[matchedStr] = code;
                     this.reverseMapping[code] = matchedStr;
                     this.counters.custom++;
-                }
+                });
             });
         }
 
