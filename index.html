@@ -9,8 +9,8 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/11.1.1/marked.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/5.0.4/tesseract.min.js"></script>
-    <script src="/static/desensitization_proxy.js"></script>
-    <script src="/static/desensitize.js"></script>
+    <script src="desensitization_proxy.js"></script>
+    <script src="desensitize.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif; background: linear-gradient(135deg, #0c1445 0%, #1a237e 50%, #283593 100%); min-height: 100vh; display: flex; }
@@ -1382,7 +1382,7 @@ ${historySummary}
         
         async function loadSecurityConfig() {
             try {
-                const response = await fetch('/static/config/keywords.json');
+                const response = await fetch('keywords.json');
                 if (response.ok) {
                     const config = await response.json();
                     desensitizationProxy.loadConfig(config);
