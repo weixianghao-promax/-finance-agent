@@ -9,7 +9,8 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/11.1.1/marked.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/5.0.4/tesseract.min.js"></script>
-    <script src="desensitization_proxy.js"></script>
+    <script src="/static/desensitization_proxy.js"></script>
+    <script src="/static/desensitize.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif; background: linear-gradient(135deg, #0c1445 0%, #1a237e 50%, #283593 100%); min-height: 100vh; display: flex; }
@@ -72,6 +73,12 @@
         .security-btn:hover { background: linear-gradient(135deg, #1e88e5, #1565c0); }
         #security-stats { color: rgba(255,255,255,0.8); font-size: 13px; line-height: 1.8; }
         .download-section { margin-top: 10px; }
+        .toast-container { position: fixed; top: 80px; right: 20px; z-index: 1000; display: flex; flex-direction: column; gap: 10px; }
+        .toast { padding: 12px 20px; border-radius: 8px; color: white; font-size: 14px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); animation: slideIn 0.3s ease-out; max-width: 350px; }
+        .toast.success { background: linear-gradient(135deg, #68d391, #48bb78); }
+        .toast.warning { background: linear-gradient(135deg, #f6ad55, #ed8936); }
+        .toast.error { background: linear-gradient(135deg, #fc8181, #f56565); }
+        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
         .download-btn { display: inline-block; padding: 8px 16px; background: #42a5f5; color: white; text-decoration: none; border-radius: 8px; font-size: 14px; transition: all 0.3s ease; }
         .download-btn:hover { background: #1e88e5; }
         .input-container input[type="file"] { display: none; }
@@ -143,11 +150,6 @@
                     <button class="upload-btn" id="upload-btn">📁 上传文件</button>
                     <input type="file" id="file-input" accept=".xlsx,.xls,.docx,.doc,.pptx,.ppt,.pdf,.txt,.jpg,.jpeg,.png,.gif,.bmp,.webp">
                     <input type="text" id="user-input" placeholder="请输入您的问题..." autocomplete="off">
-                    <label class="desensitize-toggle">
-                        <input type="checkbox" id="desensitize-toggle">
-                        <span class="toggle-slider"></span>
-                        <span class="toggle-label">脱敏上传</span>
-                    </label>
                     <button class="send-btn" id="send-btn">发送</button>
                 </div>
             </div>
@@ -175,58 +177,40 @@
         </div>
     </div>
     
+    <div class="toast-container" id="toast-container"></div>
+    
     <div class="modal-overlay" id="security-modal">
         <div class="modal">
             <div class="modal-header">
-                <h2>🔐 安全设置</h2>
+                <h2>🔐 数据安全</h2>
                 <button class="modal-close" onclick="closeSecurityModal()">×</button>
             </div>
             <div class="modal-content">
                 <div class="security-section">
-                    <h3>脱敏上传设置</h3>
-                    <div class="security-item">
-                        <label>启用脱敏上传</label>
-                        <input type="checkbox" id="security-desensitize" onchange="updateSecuritySettings()">
-                    </div>
-                    <div class="security-item">
-                        <label>自定义加密密钥</label>
-                        <input type="text" id="security-key" placeholder="输入加密密钥" onchange="updateSecuritySettings()">
-                    </div>
+                    <h3>安全机制</h3>
+                    <p style="color: rgba(255,255,255,0.8); font-size: 14px; line-height: 1.8;">
+                        • 系统会自动检测发送内容中的隐私信息<br>
+                        • 检测到隐私信息时自动进行脱敏处理<br>
+                        • 脱敏后的内容发送给AI，保护您的数据安全<br>
+                        • 系统会生成脱敏文件和密钥文件供您下载<br>
+                        • 密钥文件用于还原脱敏数据，请妥善保存
+                    </p>
                 </div>
                 <div class="security-section">
-                    <h3>脱敏规则</h3>
-                    <div class="security-item">
-                        <label>手机号脱敏</label>
-                        <input type="checkbox" id="rule-phone" checked>
+                    <h3>🔄 数据还原</h3>
+                    <p style="color: rgba(255,255,255,0.6); font-size: 13px; margin-bottom: 12px;">上传脱敏文件和对应的密钥文件，系统将自动还原为原始数据</p>
+                    <div style="display: flex; flex-direction: column; gap: 10px;">
+                        <div>
+                            <label style="font-size: 13px; color: rgba(255,255,255,0.8); display: block; margin-bottom: 5px;">📁 上传脱敏文件 (.txt)</label>
+                            <input type="file" id="restore-desensitized-file" accept=".txt" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.3); background: rgba(0,0,0,0.3); color: white;">
+                        </div>
+                        <div>
+                            <label style="font-size: 13px; color: rgba(255,255,255,0.8); display: block; margin-bottom: 5px;">🔑 上传密钥文件 (.json)</label>
+                            <input type="file" id="restore-key-file" accept=".json" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.3); background: rgba(0,0,0,0.3); color: white;">
+                        </div>
+                        <button class="security-btn" onclick="restoreData()" style="margin-top: 5px;">开始还原</button>
                     </div>
-                    <div class="security-item">
-                        <label>身份证号脱敏</label>
-                        <input type="checkbox" id="rule-id" checked>
-                    </div>
-                    <div class="security-item">
-                        <label>银行账号脱敏</label>
-                        <input type="checkbox" id="rule-bank" checked>
-                    </div>
-                    <div class="security-item">
-                        <label>金额脱敏</label>
-                        <input type="checkbox" id="rule-amount" checked>
-                    </div>
-                    <div class="security-item">
-                        <label>公司名称脱敏</label>
-                        <input type="checkbox" id="rule-company" checked>
-                    </div>
-                    <div class="security-item">
-                        <label>姓名脱敏</label>
-                        <input type="checkbox" id="rule-name" checked>
-                    </div>
-                    <div class="security-item">
-                        <label>邮箱脱敏</label>
-                        <input type="checkbox" id="rule-email" checked>
-                    </div>
-                    <div class="security-item">
-                        <label>微信号脱敏</label>
-                        <input type="checkbox" id="rule-wechat" checked>
-                    </div>
+                    <div id="restore-result" style="margin-top: 15px; padding: 10px; border-radius: 6px; background: rgba(0,0,0,0.3); display: none;"></div>
                 </div>
                 <div class="security-section">
                     <h3>统计信息</h3>
@@ -364,7 +348,24 @@
                 uploadedFileName = file.name;
                 const rawPreview = content.length > 500 ? content.substring(0, 500) + '...（内容已截断，完整内容已发送给AI）' : content;
                 const previewContent = displayDesensitize(rawPreview);
-                addMessage('✅ 文件上传成功：' + file.name + '（' + file.size + '字节）\n\n文件内容预览：\n```\n' + previewContent + '\n```\n\n您可以提问了。', 'assistant');
+                
+                let privacyInfo = '';
+                if (privacyDetector.isEnabled()) {
+                    const detectionResult = privacyDetector.detect(content);
+                    if (detectionResult.detected) {
+                        const matchNames = detectionResult.matches.slice(0, 3).map(m => m.name).join('、');
+                        const riskText = detectionResult.riskLevel === 'high' ? '高风险' : 
+                                        detectionResult.riskLevel === 'medium' ? '中风险' : '低风险';
+                        
+                        privacyInfo = `\n\n🔒 隐私检测提示：文件中检测到${riskText}内容（${matchNames}），建议发送时开启脱敏上传。`;
+                        
+                        if (detectionResult.riskLevel === 'high') {
+                            showToast(`⚠️ 文件中检测到${riskText}隐私内容（${matchNames}）`, 'warning', 4000);
+                        }
+                    }
+                }
+                
+                addMessage('✅ 文件上传成功：' + file.name + '（' + file.size + '字节）\n\n文件内容预览：\n```\n' + previewContent + '\n```\n\n您可以提问了。' + privacyInfo, 'assistant');
             } catch (error) {
                 addMessage('❌ 文件上传失败：' + error.message + '\n请尝试将文件内容复制为文本后重新上传。', 'assistant');
             } finally {
@@ -593,12 +594,42 @@
             }
         }
         
+        async function safeAiRequest(rawContent, isQuickAction = false) {
+            let safeData = rawContent;
+            let currentMapping = null;
+            
+            desensitizationProxy.reset();
+            
+            if (window.desensitizeFileData) {
+                safeData = window.desensitizeFileData(rawContent, {
+                    maskPhone: true,
+                    maskIdCard: true,
+                    maskCompanyName: true,
+                    maskContractNo: true,
+                    maskFinanceAmount: false,
+                    maskBankCard: true,
+                    maskEmail: true,
+                    maskName: true,
+                    maskWechat: true,
+                    maskPassword: true,
+                    maskAccount: true
+                });
+            }
+            
+            desensitizationProxy.desensitize(rawContent);
+            currentMapping = desensitizationProxy.getMapping();
+            
+            return { safeData, currentMapping };
+        }
+
         async function sendMessage(isQuickAction = false) {
             const text = userInput.value.trim();
             if (!text && !uploadedFileContent) return;
             
-            const desensitizeToggle = document.getElementById('desensitize-toggle');
-            const isDesensitizeEnabled = desensitizeToggle && desensitizeToggle.checked;
+            const allContent = text + (uploadedFileContent || '');
+            
+            const { safeData, currentMapping } = await safeAiRequest(allContent, isQuickAction);
+            const isDesensitizeEnabled = true;
             
             addMessage(text, 'user', null, isDesensitizeEnabled);
             userInput.value = '';
@@ -621,17 +652,25 @@
             messagesContainer.scrollTop = messagesContainer.scrollHeight;
             
             let fullResponse = '';
+            let renderInterval = null;
+            let pendingRender = false;
             
             try {
-                const desensitizeToggle = document.getElementById('desensitize-toggle');
-                const isDesensitizeEnabled = desensitizeToggle && desensitizeToggle.checked;
-                
-                const result = await callDeepSeekAPI(text, isQuickAction);
+                const result = await callDeepSeekAPI(text, isQuickAction, isDesensitizeEnabled, safeData);
                 const body = result.body;
-                const currentMapping = result.mapping;
                 
                 const reader = body.getReader();
                 const decoder = new TextDecoder();
+                
+                const renderContent = () => {
+                    if (!pendingRender) return;
+                    pendingRender = false;
+                    let displayContent = fullResponse;
+                    streamContent.innerHTML = displayDesensitize(marked.parse(displayContent));
+                    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                };
+                
+                renderInterval = setInterval(renderContent, 30);
                 
                 while (true) {
                     const { done, value } = await reader.read();
@@ -649,13 +688,7 @@
                                 const content = json.choices?.[0]?.delta?.content || '';
                                 if (content) {
                                     fullResponse += content;
-                                    let displayContent = fullResponse;
-                                    if (isDesensitizeEnabled && currentMapping) {
-                                        desensitizationProxy.setMapping(currentMapping);
-                                        displayContent = desensitizationProxy.restore(displayContent);
-                                    }
-                                    streamContent.innerHTML = displayDesensitize(marked.parse(displayContent));
-                                    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                                    pendingRender = true;
                                 }
                             } catch (e) {
                                 console.warn('解析流式响应失败:', e);
@@ -664,10 +697,32 @@
                     }
                 }
                 
+                clearInterval(renderInterval);
+                renderContent();
+                
                 chatHistory.push({ user: text, assistant: fullResponse, timestamp: Date.now() });
                 saveChatHistory();
                 
                 streamMessageDiv.classList.remove('streaming');
+                
+                if (isDesensitizeEnabled && currentMapping && Object.keys(currentMapping).length > 0) {
+                    const desensitizedFileName = generateDesensitizedFile(text, uploadedFileContent || '', currentMapping);
+                    const keyFileName = generateKeyFile(currentMapping);
+                    
+                    if (desensitizedFileName || keyFileName) {
+                        const downloadSection = document.createElement('div');
+                        downloadSection.className = 'download-section';
+                        let html = '';
+                        if (desensitizedFileName) {
+                            html += `<a href="#" onclick="downloadDesensitizedFile('${desensitizedFileName}')" class="download-btn">📥 下载脱敏文件</a> `;
+                        }
+                        if (keyFileName) {
+                            html += `<a href="#" onclick="downloadKeyFile('${keyFileName}')" class="download-btn">🔑 下载密钥文件</a>`;
+                        }
+                        downloadSection.innerHTML = html;
+                        streamContent.appendChild(downloadSection);
+                    }
+                }
                 
                 const hasTableOrFinance = fullResponse.includes('|') || 
                                           fullResponse.includes('序号') || 
@@ -742,51 +797,61 @@
             return content.substring(0, half) + '\n...（内容已截断，保留核心信息）\n' + content.substring(content.length - half);
         }
         
-        async function callDeepSeekAPI(text, isQuickAction = false) {
+        async function callDeepSeekAPI(text, isQuickAction = false, isDesensitizeEnabled = false, safeData = null) {
             let systemPrompt = '你是一位专业的港口码头管理智能助手，擅长人事管理、安全生产、财务管理和文档处理。请使用自然语言与用户交流，在缺少必要信息时主动询问，然后生成结构化的方案。';
             
-            let userContent = text;
+            let userContent = safeData || text;
             const requestType = detectRequestType(text);
             if (requestType && FORMAT_TEMPLATES[requestType]) {
                 userContent += FORMAT_TEMPLATES[requestType];
             }
             
-            const desensitizeToggle = document.getElementById('desensitize-toggle');
-            const isDesensitizeEnabled = desensitizeToggle && desensitizeToggle.checked;
-            
             let currentMapping = null;
+            
             if (isDesensitizeEnabled) {
-                userContent = desensitizationProxy.desensitize(userContent);
+                if (!safeData) {
+                    userContent = desensitizationProxy.desensitize(userContent);
+                }
                 currentMapping = desensitizationProxy.getMapping();
-                systemPrompt += '\n\n重要：用户消息中包含如[PH1][ID1][AM1]等方括号占位符，请原样保留这些占位符，不要修改或替换它们。';
+                systemPrompt += '\n\n重要：用户消息中包含脱敏处理后的内容，请根据上下文理解并生成回复。';
             }
             
             if (uploadedFileContent) {
-                let truncatedContent = truncateContent(uploadedFileContent, 2000);
+                let truncatedContent = truncateContent(uploadedFileContent, 3000);
                 if (isDesensitizeEnabled) {
                     truncatedContent = desensitizationProxy.desensitize(truncatedContent);
                 }
-                userContent = `文件内容（${uploadedFileName}）：\n${truncatedContent}\n\n问题：${userContent}`;
+                userContent = `文件内容（${uploadedFileName}）：\n${truncatedContent}\n\n问题：${text}`;
             }
             
-            const recentHistory = chatHistory.slice(-3);
+            const recentHistory = chatHistory.slice(-2);
+            const desensitizedHistory = recentHistory.map(function(h) { 
+                const content = h.user || h.assistant;
+                const desensitizedContent = isDesensitizeEnabled && window.desensitizeFileData 
+                    ? window.desensitizeFileData(content, {
+                        maskPhone: true, maskIdCard: true, maskCompanyName: true, 
+                        maskContractNo: true, maskFinanceAmount: false, maskBankCard: true,
+                        maskEmail: true, maskName: true, maskWechat: true,
+                        maskPassword: true, maskAccount: true
+                    })
+                    : content;
+                return { 
+                    role: h.user ? 'user' : 'assistant', 
+                    content: desensitizedContent 
+                }; 
+            });
             const messages = [
                 { role: 'system', content: systemPrompt },
-                ...recentHistory.map(function(h) { 
-                    return { 
-                        role: h.user ? 'user' : 'assistant', 
-                        content: h.user || h.assistant 
-                    }; 
-                }),
+                ...desensitizedHistory,
                 { role: 'user', content: userContent }
             ];
             
-            const maxTokens = isQuickAction ? 4096 : 2048;
+            const maxTokens = isQuickAction ? 2048 : 1024;
             
             const response = await fetch(BASE_URL + '/v1/chat/completions', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + API_KEY },
-                body: JSON.stringify({ model: MODEL, messages: messages, temperature: 0.5, max_tokens: maxTokens, stream: true })
+                body: JSON.stringify({ model: MODEL, messages: messages, temperature: 0.5, max_tokens: maxTokens, stream: true, top_p: 0.9, top_k: 50, frequency_penalty: 0, presence_penalty: 0 })
             });
             
             if (!response.ok) {
@@ -918,6 +983,77 @@
             }
         }
         
+        function generateDesensitizedFile(text, fileContent, mapping) {
+            try {
+                let desensitizedContent = desensitizationProxy.desensitize(text);
+                if (fileContent) {
+                    desensitizedContent += '\n\n=== 文件内容 ===\n' + desensitizationProxy.desensitize(fileContent);
+                }
+                
+                const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+                const timestamp = new Date().getTime();
+                const fileName = '脱敏数据_' + dateStr + '_' + timestamp + '.txt';
+                
+                const blob = new Blob([desensitizedContent], { type: 'text/plain;charset=utf-8' });
+                window.desensitizedBlob = blob;
+                window.desensitizedFileName = fileName;
+                
+                return fileName;
+            } catch (e) {
+                console.error('生成脱敏文件失败:', e);
+                return null;
+            }
+        }
+        
+        function generateKeyFile(mapping) {
+            try {
+                const keyData = {
+                    mapping: mapping,
+                    timestamp: new Date().toISOString(),
+                    description: '此密钥文件用于还原脱敏数据，请妥善保存！'
+                };
+                
+                const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+                const timestamp = new Date().getTime();
+                const fileName = '脱敏密钥_' + dateStr + '_' + timestamp + '.json';
+                
+                const blob = new Blob([JSON.stringify(keyData, null, 2)], { type: 'application/json;charset=utf-8' });
+                window.keyBlob = blob;
+                window.keyFileName = fileName;
+                
+                return fileName;
+            } catch (e) {
+                console.error('生成密钥文件失败:', e);
+                return null;
+            }
+        }
+        
+        function downloadDesensitizedFile(fileName) {
+            if (window.desensitizedBlob && window.desensitizedFileName) {
+                const url = URL.createObjectURL(window.desensitizedBlob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = window.desensitizedFileName;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            }
+        }
+        
+        function downloadKeyFile(fileName) {
+            if (window.keyBlob && window.keyFileName) {
+                const url = URL.createObjectURL(window.keyBlob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = window.keyFileName;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            }
+        }
+        
         function addTypingIndicator() {
             const messageDiv = document.createElement('div');
             messageDiv.className = 'message assistant';
@@ -929,6 +1065,28 @@
         
         function removeTypingIndicator(element) {
             if (element && element.parentNode) element.parentNode.removeChild(element);
+        }
+        
+        function showToast(message, type = 'success', duration = 3000) {
+            const container = document.getElementById('toast-container');
+            if (!container) return;
+            
+            const toast = document.createElement('div');
+            toast.className = 'toast ' + type;
+            toast.textContent = message;
+            
+            container.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateX(100%)';
+                toast.style.transition = 'all 0.3s ease';
+                setTimeout(() => {
+                    if (toast.parentNode) {
+                        toast.parentNode.removeChild(toast);
+                    }
+                }, 300);
+            }, duration);
         }
         
         function sendQuickAction(action) {
@@ -1019,9 +1177,6 @@ ${historySummary}
             const modal = document.getElementById('security-modal');
             modal.classList.add('active');
             updateSecurityStats();
-            const toggle = document.getElementById('desensitize-toggle');
-            const securityToggle = document.getElementById('security-desensitize');
-            securityToggle.checked = toggle ? toggle.checked : false;
         }
         
         function closeSecurityModal() {
@@ -1029,25 +1184,21 @@ ${historySummary}
         }
         
         function updateSecuritySettings() {
-            const toggle = document.getElementById('desensitize-toggle');
-            const securityToggle = document.getElementById('security-desensitize');
-            const keyInput = document.getElementById('security-key');
-            
-            if (toggle) {
-                toggle.checked = securityToggle.checked;
-            }
-            
-            if (keyInput.value) {
-                desensitizationProxy.setSettings({ encryptionKey: keyInput.value });
-            }
-            
             updateSecurityStats();
         }
         
         function updateSecurityStats() {
             const stats = desensitizationProxy.getStatistics();
             const logs = desensitizationProxy.getLogs();
+            const privacyStats = privacyDetector.getStats();
             const statsDiv = document.getElementById('security-stats');
+            
+            const lastDetectTime = privacyStats.lastDetectionTime 
+                ? new Date(privacyStats.lastDetectionTime).toLocaleString('zh-CN') 
+                : '无';
+            const lastPatterns = privacyStats.lastDetectedPatterns.length > 0 
+                ? privacyStats.lastDetectedPatterns.join('、') 
+                : '无';
             
             statsDiv.innerHTML = `
                 <p>• 总替换数: ${stats.totalReplaced}</p>
@@ -1062,6 +1213,12 @@ ${historySummary}
                 <p>  - 姓名: ${stats.byCategory.name}</p>
                 <p>  - 邮箱: ${stats.byCategory.email}</p>
                 <p>  - 微信号: ${stats.byCategory.wechat}</p>
+                <p style="margin-top:10px; padding-top:10px; border-top:1px solid rgba(255,255,255,0.1);">🔍 隐私检测统计:</p>
+                <p>  - 检测次数: ${privacyStats.totalDetections}</p>
+                <p>  - 高风险检测: ${privacyStats.highRiskDetections}</p>
+                <p>  - 中风险检测: ${privacyStats.mediumRiskDetections}</p>
+                <p>  - 上次检测时间: ${lastDetectTime}</p>
+                <p>  - 上次检测类型: ${lastPatterns}</p>
             `;
         }
         
@@ -1143,7 +1300,101 @@ ${historySummary}
             }).join('');
         }
         
+        async function restoreData() {
+            const desensitizedFileInput = document.getElementById('restore-desensitized-file');
+            const keyFileInput = document.getElementById('restore-key-file');
+            const resultDiv = document.getElementById('restore-result');
+            
+            if (!desensitizedFileInput.files[0]) {
+                resultDiv.style.display = 'block';
+                resultDiv.style.background = 'rgba(255,0,0,0.2)';
+                resultDiv.innerHTML = '<p style="color: #ff6b6b;">❌ 请先上传脱敏文件</p>';
+                return;
+            }
+            
+            if (!keyFileInput.files[0]) {
+                resultDiv.style.display = 'block';
+                resultDiv.style.background = 'rgba(255,0,0,0.2)';
+                resultDiv.innerHTML = '<p style="color: #ff6b6b;">❌ 请先上传密钥文件</p>';
+                return;
+            }
+            
+            try {
+                resultDiv.style.display = 'block';
+                resultDiv.style.background = 'rgba(0,0,0,0.3)';
+                resultDiv.innerHTML = '<p style="color: #4ecdc4;">⏳ 正在读取文件...</p>';
+                
+                const desensitizedFile = desensitizedFileInput.files[0];
+                const keyFile = keyFileInput.files[0];
+                
+                const desensitizedContent = await readFileContent(desensitizedFile);
+                const keyContent = await readFileContent(keyFile);
+                
+                const keyData = JSON.parse(keyContent);
+                
+                if (!keyData.mapping || typeof keyData.mapping !== 'object') {
+                    resultDiv.style.background = 'rgba(255,0,0,0.2)';
+                    resultDiv.innerHTML = '<p style="color: #ff6b6b;">❌ 密钥文件格式错误，缺少mapping字段</p>';
+                    return;
+                }
+                
+                resultDiv.innerHTML = '<p style="color: #4ecdc4;">⏳ 正在还原数据...</p>';
+                
+                const restoredContent = desensitizationProxy.restoreWithKey(desensitizedContent, keyData.mapping);
+                
+                const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+                const timestamp = new Date().getTime();
+                const fileName = '还原数据_' + dateStr + '_' + timestamp + '.txt';
+                
+                const blob = new Blob([restoredContent], { type: 'text/plain;charset=utf-8' });
+                window.restoredBlob = blob;
+                window.restoredFileName = fileName;
+                
+                resultDiv.style.background = 'rgba(0,255,0,0.1)';
+                resultDiv.innerHTML = `
+                    <p style="color: #4ecdc4;">✅ 数据还原成功！</p>
+                    <p style="color: rgba(255,255,255,0.7); font-size: 13px; margin-top: 8px;">还原时间: ${new Date().toLocaleString('zh-CN')}</p>
+                    <p style="color: rgba(255,255,255,0.7); font-size: 13px;">还原的数据项: ${Object.keys(keyData.mapping).length} 项</p>
+                    <a href="#" onclick="downloadRestoredFile()" class="download-btn" style="display: inline-block; margin-top: 12px;">📥 下载还原文件</a>
+                `;
+                
+            } catch (error) {
+                console.error('数据还原失败:', error);
+                resultDiv.style.display = 'block';
+                resultDiv.style.background = 'rgba(255,0,0,0.2)';
+                resultDiv.innerHTML = '<p style="color: #ff6b6b;">❌ 还原失败: ' + error.message + '</p>';
+            }
+        }
+        
+        function downloadRestoredFile() {
+            if (window.restoredBlob && window.restoredFileName) {
+                const url = URL.createObjectURL(window.restoredBlob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = window.restoredFileName;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            }
+        }
+        
+        async function loadSecurityConfig() {
+            try {
+                const response = await fetch('/static/config/keywords.json');
+                if (response.ok) {
+                    const config = await response.json();
+                    desensitizationProxy.loadConfig(config);
+                    privacyDetector.loadConfig(config);
+                    console.log('✅ 安全配置加载成功');
+                }
+            } catch (error) {
+                console.warn('安全配置加载失败，使用默认配置:', error);
+            }
+        }
+
         document.addEventListener('DOMContentLoaded', function() {
+            loadSecurityConfig();
             if (chatHistory.length > 0) {
                 messagesContainer.innerHTML = '';
                 chatHistory.forEach(item => {
