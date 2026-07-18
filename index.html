@@ -346,26 +346,18 @@
                 const content = await readFileContent(file);
                 uploadedFileContent = content;
                 uploadedFileName = file.name;
-                const rawPreview = content.length > 500 ? content.substring(0, 500) + '...（内容已截断，完整内容已发送给AI）' : content;
-                const previewContent = displayDesensitize(rawPreview);
-                
-                let privacyInfo = '';
-                if (privacyDetector.isEnabled()) {
-                    const detectionResult = privacyDetector.detect(content);
-                    if (detectionResult.detected) {
-                        const matchNames = detectionResult.matches.slice(0, 3).map(m => m.name).join('、');
-                        const riskText = detectionResult.riskLevel === 'high' ? '高风险' : 
-                                        detectionResult.riskLevel === 'medium' ? '中风险' : '低风险';
-                        
-                        privacyInfo = `\n\n🔒 隐私检测提示：文件中检测到${riskText}内容（${matchNames}），建议发送时开启脱敏上传。`;
-                        
-                        if (detectionResult.riskLevel === 'high') {
-                            showToast(`⚠️ 文件中检测到${riskText}隐私内容（${matchNames}）`, 'warning', 4000);
-                        }
-                    }
-                }
-                
-                addMessage('✅ 文件上传成功：' + file.name + '（' + file.size + '字节）\n\n文件内容预览：\n```\n' + previewContent + '\n```\n\n您可以提问了。' + privacyInfo, 'assistant');
+
+                const safePreview = window.desensitizeFileData
+                    ? window.desensitizeFileData(content.length > 500 ? content.substring(0, 500) + '...（内容已截断，完整内容已自动脱敏处理）' : content, {
+                        maskPhone: true, maskIdCard: true, maskCompanyName: true,
+                        maskContractNo: true, maskFinanceAmount: false, maskBankCard: true,
+                        maskEmail: true, maskName: true, maskWechat: true,
+                        maskPassword: true, maskAccount: true
+                    })
+                    : (content.length > 500 ? content.substring(0, 500) + '...（内容已截断）' : content);
+                const previewContent = displayDesensitize(safePreview);
+
+                addMessage('✅ 文件上传成功：' + file.name + '（' + file.size + '字节）\n\n🔒 已自动完成本地离线脱敏处理，预览：\n```\n' + previewContent + '\n```\n\n您可以提问了。', 'assistant');
             } catch (error) {
                 addMessage('❌ 文件上传失败：' + error.message + '\n请尝试将文件内容复制为文本后重新上传。', 'assistant');
             } finally {
@@ -597,9 +589,9 @@
         async function safeAiRequest(rawContent, isQuickAction = false) {
             let safeData = rawContent;
             let currentMapping = null;
-            
+
             desensitizationProxy.reset();
-            
+
             if (window.desensitizeFileData) {
                 safeData = window.desensitizeFileData(rawContent, {
                     maskPhone: true,
@@ -615,10 +607,10 @@
                     maskAccount: true
                 });
             }
-            
-            desensitizationProxy.desensitize(rawContent);
+
+            desensitizationProxy.desensitize(safeData);
             currentMapping = desensitizationProxy.getMapping();
-            
+
             return { safeData, currentMapping };
         }
 
@@ -799,15 +791,15 @@
         
         async function callDeepSeekAPI(text, isQuickAction = false, isDesensitizeEnabled = false, safeData = null) {
             let systemPrompt = '你是一位专业的港口码头管理智能助手，擅长人事管理、安全生产、财务管理和文档处理。请使用自然语言与用户交流，在缺少必要信息时主动询问，然后生成结构化的方案。';
-            
+
             let userContent = safeData || text;
             const requestType = detectRequestType(text);
             if (requestType && FORMAT_TEMPLATES[requestType]) {
                 userContent += FORMAT_TEMPLATES[requestType];
             }
-            
+
             let currentMapping = null;
-            
+
             if (isDesensitizeEnabled) {
                 if (!safeData) {
                     userContent = desensitizationProxy.desensitize(userContent);
@@ -815,11 +807,20 @@
                 currentMapping = desensitizationProxy.getMapping();
                 systemPrompt += '\n\n重要：用户消息中包含脱敏处理后的内容，请根据上下文理解并生成回复。';
             }
-            
+
             if (uploadedFileContent) {
                 let truncatedContent = truncateContent(uploadedFileContent, 3000);
                 if (isDesensitizeEnabled) {
-                    truncatedContent = desensitizationProxy.desensitize(truncatedContent);
+                    if (window.desensitizeFileData) {
+                        truncatedContent = window.desensitizeFileData(truncatedContent, {
+                            maskPhone: true, maskIdCard: true, maskCompanyName: true,
+                            maskContractNo: true, maskFinanceAmount: false, maskBankCard: true,
+                            maskEmail: true, maskName: true, maskWechat: true,
+                            maskPassword: true, maskAccount: true
+                        });
+                    } else {
+                        truncatedContent = desensitizationProxy.desensitize(truncatedContent);
+                    }
                 }
                 userContent = `文件内容（${uploadedFileName}）：\n${truncatedContent}\n\n问题：${text}`;
             }
